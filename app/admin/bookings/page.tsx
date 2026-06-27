@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Check, X, Phone, Mail, MapPin, Calendar, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ import {
 import { Input } from '@/components/ui/input'
 
 export default function BookingRequests() {
+  const searchParams = useSearchParams()
+  const defaultTab = searchParams.get('tab') || 'pending'
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [proposeDate, setProposeDate] = useState('')
   const [proposeTime, setProposeTime] = useState('')
@@ -113,7 +116,7 @@ export default function BookingRequests() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Contact Information */}
-        <div className="space-y-2 bg-background/50 p-3 rounded-lg">
+        <div className="space-y-2 p-3 rounded-lg">
           <div className="flex items-center gap-2 text-sm">
             <Phone className="h-4 w-4 text-muted-foreground" />
             <span>{request.phone}</span>
@@ -239,7 +242,7 @@ export default function BookingRequests() {
       </Dialog>
 
       {/* Tabs */}
-      <Tabs defaultValue="pending" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="pending">
             Pending ({pendingRequests.length})

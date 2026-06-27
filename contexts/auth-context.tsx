@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 
 interface AuthContextType {
   isAuthenticated: boolean
-  user: { username: string } | null
+  user: { username: string; email: string } | null
   isLoading: boolean
   error: string | null
   login: (username: string, password: string) => Promise<void>
@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<{ username: string } | null>(null)
+  const [user, setUser] = useState<{ username: string; email: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Simple demo validation
       if (username === 'admin' && password === 'admin123') {
-        setUser({ username })
+        setUser({ username, email: `${username}@facility.local` })
         setIsAuthenticated(true)
       } else {
         setError('Invalid username or password')

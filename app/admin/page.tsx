@@ -21,49 +21,55 @@ export default function FacilityDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Dashboard Header */}
       <div>
-        <h1 className="text-3xl font-bold text-balance">Facility Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Manage donor and recipient booking requests</p>
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <p className="text-sm text-muted-foreground">Overview of your facility's activity and pending tasks</p>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-light-pink bg-light-pink/30">
-          <CardHeader className="pb-2">
+        <Card size="sm" className="border-light-pink bg-white">
+          <CardHeader className="pb-0">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-              <AlertCircle className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Requests</CardTitle>
+              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10">
+                <AlertCircle className="h-6 w-6 text-primary" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">8</div>
+            <div className="text-2xl font-bold text-black">8</div>
             <p className="text-xs text-muted-foreground mt-1">Awaiting confirmation</p>
           </CardContent>
         </Card>
 
-        <Card className="border-accent bg-[#FFF9F0]">
-          <CardHeader className="pb-2">
+        <Card size="sm" className="border-accent bg-white">
+          <CardHeader className="pb-0">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Confirmed This Week</CardTitle>
-              <CheckCircle className="h-4 w-4 text-accent" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed This Week</CardTitle>
+              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-accent/10">
+                <CheckCircle className="h-6 w-6 text-accent" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-accent">24</div>
+            <div className="text-2xl font-bold text-black">24</div>
             <p className="text-xs text-muted-foreground mt-1">Successfully processed</p>
           </CardContent>
         </Card>
 
-        <Card className="border-rose-accent bg-light-pink/20">
-          <CardHeader className="pb-2">
+        <Card size="sm" className="border-light-pink bg-white">
+          <CardHeader className="pb-0">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Action Required</CardTitle>
-              <Clock className="h-4 w-4 text-rose-accent" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Action Required</CardTitle>
+              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10">
+                <Clock className="h-6 w-6 text-primary" />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-accent">3</div>
+            <div className="text-2xl font-bold text-black">3</div>
             <p className="text-xs text-muted-foreground mt-1">Requires your attention</p>
           </CardContent>
         </Card>
@@ -108,15 +114,15 @@ export default function FacilityDashboard() {
           <CardContent>
             <div className="space-y-4">
               {recentConfirmed.map((booking) => (
-                <div key={booking.id} className="flex items-start justify-between p-3 border border-accent rounded-lg bg-[#FFF9F0]">
+                <div key={booking.id} className="flex items-start justify-between p-3 border border-green-200 rounded-lg bg-green-50">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm text-foreground">{booking.name}</span>
-                      <Badge className="text-xs bg-accent hover:bg-accent text-white">{booking.type}</Badge>
+                      <Badge className="text-xs bg-green-500 hover:bg-green-500 text-white">{booking.type}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{booking.volume} allocated</p>
                   </div>
-                  <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
+                  <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                 </div>
               ))}
             </div>
@@ -135,7 +141,7 @@ export default function FacilityDashboard() {
               <Calendar className="mr-2 h-4 w-4" />
               Manage Bookings
             </Button>
-            <Button variant="outline" className="justify-start border-accent text-accent hover:bg-light-pink/30" render={<Link href="/admin/bookings?filter=screening" />}>
+            <Button variant="outline" className="justify-start border-accent text-accent hover:bg-light-pink/30" render={<Link href="/admin/bookings?tab=confirmed" />}>
               <AlertCircle className="mr-2 h-4 w-4" />
               Review Screenings
             </Button>

@@ -6,11 +6,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Bell, User, ChevronDown } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { LogOut, User } from 'lucide-react'
 
 export function FacilityHeader() {
   const router = useRouter()
@@ -22,38 +20,20 @@ export function FacilityHeader() {
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative">
-        <Bell className="size-5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
-        <Badge className="absolute -top-2 -right-2 size-5 p-0 flex items-center justify-center bg-destructive text-xs">
-          3
-        </Badge>
-      </div>
-
+    <div className="flex items-center">
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="size-4 text-primary" />
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-sm font-medium">Maria Santos</p>
-              <p className="text-xs text-muted-foreground">Facility Manager</p>
-            </div>
-            <ChevronDown className="size-4 text-muted-foreground" />
+        <DropdownMenuTrigger className="flex items-center gap-3 px-4 py-2 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200 cursor-pointer">
+          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+            <User className="h-5 w-5 text-white" />
           </div>
+          <span className="text-sm font-medium text-foreground">Facility Mgmt.</span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <div className="px-2 py-1.5">
-            <p className="text-sm font-medium">Maria Santos</p>
-            <p className="text-xs text-muted-foreground">maria@kalingfacility.com</p>
+        <DropdownMenuContent align="end" className="w-56 rounded-xl">
+          <div className="px-4 py-2 border-b border-border">
+            <p className="text-sm text-muted-foreground">facility@kalingapp.com</p>
           </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-          <DropdownMenuItem>Facility Information</DropdownMenuItem>
-          <DropdownMenuItem>Staff Management</DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
             Logout
           </DropdownMenuItem>
         </DropdownMenuContent>

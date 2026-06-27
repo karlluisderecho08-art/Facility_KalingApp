@@ -38,21 +38,23 @@ export function FacilitySidebar() {
   }
 
   return (
-    <Sidebar>
+    <Sidebar className="bg-white border-r border-border">
       <SidebarContent>
         <SidebarGroup>
-          <div className="px-4 py-3 mb-2">
-            <div className="flex items-center gap-3 mb-1">
+          <div className="p-5 border-b border-border">
+            <div className="flex items-center gap-3">
               <img
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-logo-kZ5dYwW0EczGiFN8WRQf0BUCupImzB.png"
                 alt="KalingApp"
-                width={32}
-                height={32}
+                width={40}
+                height={40}
                 className="object-contain"
               />
-              <h1 className="text-lg font-bold text-foreground">KalingApp</h1>
+              <div>
+                <h1 className="text-lg font-bold text-foreground leading-tight">KalingApp</h1>
+                <p className="text-xs text-muted-foreground">Facility Manager</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Facility Manager</p>
           </div>
         </SidebarGroup>
 
@@ -65,7 +67,11 @@ export function FacilitySidebar() {
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={isActive(item.href)}
-                    className={isActive(item.href) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                    className={
+                      isActive(item.href)
+                        ? 'bg-light-pink text-primary font-semibold px-4 py-2.5 rounded-xl'
+                        : 'text-muted-foreground px-4 py-2.5 rounded-xl'
+                    }
                   >
                     <item.icon className="size-4" />
                     <span>{item.label}</span>
@@ -85,7 +91,11 @@ export function FacilitySidebar() {
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={isActive(item.href)}
-                    className={isActive(item.href) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}
+                    className={
+                      isActive(item.href)
+                        ? 'bg-light-pink text-primary font-semibold px-4 py-2.5 rounded-xl'
+                        : 'text-muted-foreground px-4 py-2.5 rounded-xl'
+                    }
                   >
                     <item.icon className="size-4" />
                     <span>{item.label}</span>
