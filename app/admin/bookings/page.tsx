@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, X, Phone, Mail, MapPin, Calendar, Clock } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Check, X, Phone, Mail, MapPin, Eye, AlertTriangle } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,16 +15,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+
+const DECLINE_REASONS = ['No Available Doctor', 'Outdated Serological Test']
 
 export default function BookingRequests() {
   const searchParams = useSearchParams()
   const defaultTab = searchParams.get('tab') || 'pending'
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [proposeDate, setProposeDate] = useState('')
-  const [proposeTime, setProposeTime] = useState('')
-  const [proposeReason, setProposeReason] = useState('')
-  const pendingRequests = [
+
+  const [pendingRequests, setPendingRequests] = useState([
     {
       id: 'BR001',
       type: 'Donor Screening',
@@ -34,6 +32,17 @@ export default function BookingRequests() {
       location: 'Quezon City',
       date: '2025-06-25 10:00 AM',
       status: 'pending',
+      questionnaire: [
+        { question: 'Have you donated blood in the last 3 months?', answer: 'No' },
+        { question: 'Do you have any chronic illnesses?', answer: 'No' },
+        { question: 'Are you currently taking any medications?', answer: 'Vitamins only' },
+        { question: 'Have you traveled outside the country in the last 6 months?', answer: 'No' },
+      ],
+      serology: {
+        testDate: '2025-06-10',
+        imageUrl: '/placeholder.jpg',
+        expired: false,
+      },
     },
     {
       id: 'BR002',
@@ -44,6 +53,16 @@ export default function BookingRequests() {
       location: 'Makati',
       date: '2025-06-25 02:00 PM',
       status: 'pending',
+      questionnaire: [
+        { question: 'What is the reason for the blood request?', answer: 'Scheduled surgery' },
+        { question: 'What blood type is required?', answer: 'O+' },
+        { question: 'How many units are needed?', answer: '2' },
+      ],
+      serology: {
+        testDate: '2024-11-02',
+        imageUrl: '/placeholder.jpg',
+        expired: true,
+      },
     },
     {
       id: 'BR003',
@@ -54,10 +73,21 @@ export default function BookingRequests() {
       location: 'Las Piñas',
       date: '2025-06-26 09:00 AM',
       status: 'pending',
+      questionnaire: [
+        { question: 'Have you donated blood in the last 3 months?', answer: 'No' },
+        { question: 'Do you have any chronic illnesses?', answer: 'Asthma (controlled)' },
+        { question: 'Are you currently taking any medications?', answer: 'None' },
+        { question: 'Have you traveled outside the country in the last 6 months?', answer: 'Yes - Japan' },
+      ],
+      serology: {
+        testDate: '2025-06-15',
+        imageUrl: '/placeholder.jpg',
+        expired: false,
+      },
     },
-  ]
+  ])
 
-  const confirmedRequests = [
+  const [confirmedRequests, setConfirmedRequests] = useState([
     {
       id: 'BR010',
       type: 'Donor Screening',
@@ -67,6 +97,15 @@ export default function BookingRequests() {
       location: 'Pasig',
       date: 'Confirmed - June 20',
       status: 'confirmed',
+      questionnaire: [
+        { question: 'Have you donated blood in the last 3 months?', answer: 'No' },
+        { question: 'Do you have any chronic illnesses?', answer: 'No' },
+      ],
+      serology: {
+        testDate: '2025-06-01',
+        imageUrl: '/placeholder.jpg',
+        expired: false,
+      },
     },
     {
       id: 'BR011',
@@ -77,85 +116,148 @@ export default function BookingRequests() {
       location: 'Taguig',
       date: 'Confirmed - June 21',
       status: 'confirmed',
+      questionnaire: [
+        { question: 'What is the reason for the blood request?', answer: 'Anemia treatment' },
+        { question: 'What blood type is required?', answer: 'A-' },
+      ],
+      serology: {
+        testDate: '2025-05-28',
+        imageUrl: '/placeholder.jpg',
+        expired: false,
+      },
     },
-  ]
+  ])
 
-  const handleProposeSchedule = (request) => {
-    setSelectedRequest(request)
-    setProposeDate('')
-    setProposeTime('')
-    setProposeReason('')
+  const [declinedRequests, setDeclinedRequests] = useState([])
+
+  const [detailsRequest, setDetailsRequest] = useState(null)
+
+  const [declineRequest, setDeclineRequest] = useState(null)
+  const [declineReason, setDeclineReason] = useState('')
+  const [declineNotes, setDeclineNotes] = useState('')
+
+  const handleConfirm = (request) => {
+    // TODO: replace with API call
+    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id))
+    // TODO: replace with API call
+    setConfirmedRequests((prev) => [...prev, { ...request, status: 'confirmed' }])
   }
 
-  const handleSubmitProposal = () => {
-    if (proposeDate && proposeTime) {
-      // Simulate sending proposal to user
-      console.log(`Proposed new schedule to ${selectedRequest.name}:`, {
-        date: proposeDate,
-        time: proposeTime,
-        reason: proposeReason,
-      })
-      setSelectedRequest(null)
-    }
+  const handleOpenDecline = (request) => {
+    setDeclineRequest(request)
+    setDeclineReason('')
+    setDeclineNotes('')
   }
 
-  const RequestCard = ({ request, isPending }) => (
-    <Card className={isPending ? 'border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20' : 'border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/20'}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <CardTitle className="text-lg">{request.name}</CardTitle>
-              <Badge variant={request.type === 'Donor Screening' ? 'default' : 'secondary'}>
-                {request.type}
-              </Badge>
+  const handleSubmitDecline = () => {
+    if (!declineReason || !declineRequest) return
+    // TODO: replace with API call
+    setPendingRequests((prev) => prev.filter((r) => r.id !== declineRequest.id))
+    // TODO: replace with API call
+    setDeclinedRequests((prev) => [
+      ...prev,
+      { ...declineRequest, status: 'declined', declineReason, declineNotes },
+    ])
+    setDeclineRequest(null)
+  }
+
+  const RequestCard = ({ request, variant }) => {
+    const borderClasses =
+      variant === 'pending'
+        ? 'border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20'
+        : variant === 'confirmed'
+        ? 'border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/20'
+        : 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20'
+
+    return (
+      <Card className={borderClasses}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <CardTitle className="text-lg">{request.name}</CardTitle>
+                <Badge variant={request.type === 'Donor Screening' ? 'default' : 'secondary'}>
+                  {request.type}
+                </Badge>
+                {request.serology?.expired && (
+                  <Badge variant="destructive">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Serology Expired
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">{request.date}</p>
             </div>
-            <p className="text-sm text-muted-foreground">{request.date}</p>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Contact Information */}
-        <div className="space-y-2 p-3 rounded-lg">
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{request.phone}</span>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Contact Information */}
+          <div className="space-y-2 p-3 rounded-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{request.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <span>{request.email}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>{request.location}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span>{request.email}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{request.location}</span>
-          </div>
-        </div>
 
-        {/* Actions */}
-        {isPending ? (
+          {variant === 'declined' && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">Decline Reason</p>
+              <p className="text-sm font-medium text-destructive">{request.declineReason}</p>
+              {request.declineNotes && (
+                <p className="text-sm text-muted-foreground">{request.declineNotes}</p>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
           <div className="flex gap-2 pt-2">
-            <Button className="flex-1 bg-primary hover:bg-primary/90 text-white">
-              <Check className="h-4 w-4 mr-2" />
-              Confirm
-            </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="flex-1"
-              onClick={() => handleProposeSchedule(request)}
+              onClick={() => setDetailsRequest(request)}
             >
-              <X className="h-4 w-4 mr-2" />
-              Decline
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
             </Button>
+            {variant === 'pending' && (
+              <>
+                <Button
+                  className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                  onClick={() => handleConfirm(request)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleOpenDecline(request)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Decline
+                </Button>
+              </>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center gap-2 text-accent text-sm font-medium pt-2">
-            <Check className="h-4 w-4" />
-            Confirmed and scheduled
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
+
+          {variant === 'confirmed' && (
+            <div className="flex items-center gap-2 text-accent text-sm font-medium pt-2">
+              <Check className="h-4 w-4" />
+              Confirmed and scheduled
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -165,58 +267,100 @@ export default function BookingRequests() {
         <p className="text-muted-foreground mt-2">Confirm or decline donor screening and recipient requests</p>
       </div>
 
-      {/* Propose Schedule Dialog */}
-      <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+      {/* View Details Dialog */}
+      <Dialog open={!!detailsRequest} onOpenChange={(open) => !open && setDetailsRequest(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{detailsRequest?.name}</DialogTitle>
+            <DialogDescription>
+              {detailsRequest?.type} • {detailsRequest?.date}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {/* Questionnaire */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Questionnaire</h3>
+              <div className="space-y-3">
+                {detailsRequest?.questionnaire?.map((qa, index) => (
+                  <div key={index} className="space-y-0.5">
+                    <p className="text-sm text-muted-foreground">{qa.question}</p>
+                    <p className="text-sm font-medium">{qa.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Serology Results */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">Serology Results</h3>
+                {detailsRequest?.serology?.expired && (
+                  <Badge variant="destructive">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Expired
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Test Date: {detailsRequest?.serology?.testDate}
+              </p>
+              {detailsRequest?.serology?.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={detailsRequest.serology.imageUrl}
+                  alt="Serology test result"
+                  className="w-full rounded-lg border border-border"
+                />
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsRequest(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Decline Dialog */}
+      <Dialog open={!!declineRequest} onOpenChange={(open) => !open && setDeclineRequest(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Propose New Schedule</DialogTitle>
+            <DialogTitle>Decline Request</DialogTitle>
             <DialogDescription>
-              Suggest a new date and time to {selectedRequest?.name}
+              Decline the request from {declineRequest?.name}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Current Request Info */}
-            <div className="bg-light-pink/30 border border-primary/20 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">Original Request:</p>
-              <p className="text-sm font-medium text-foreground">{selectedRequest?.date}</p>
-            </div>
-
-            {/* Date Input */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <Calendar className="h-4 w-4 text-primary" />
-                Proposed Date
-              </label>
-              <Input
-                type="date"
-                value={proposeDate}
-                onChange={(e) => setProposeDate(e.target.value)}
-                className="rounded-lg"
-              />
-            </div>
-
-            {/* Time Input */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="h-4 w-4 text-primary" />
-                Proposed Time
-              </label>
-              <Input
-                type="time"
-                value={proposeTime}
-                onChange={(e) => setProposeTime(e.target.value)}
-                className="rounded-lg"
-              />
-            </div>
-
             {/* Reason */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Reason for Rescheduling (Optional)</label>
+              <label className="text-sm font-medium">
+                Reason <span className="text-destructive">*</span>
+              </label>
+              <select
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select a reason</option>
+                {DECLINE_REASONS.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {reason}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes (Optional)</label>
               <textarea
-                value={proposeReason}
-                onChange={(e) => setProposeReason(e.target.value)}
-                placeholder="e.g., Facility maintenance, Staff availability..."
+                value={declineNotes}
+                onChange={(e) => setDeclineNotes(e.target.value)}
+                placeholder="Additional details for this decline..."
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 rows={3}
               />
@@ -224,18 +368,15 @@ export default function BookingRequests() {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSelectedRequest(null)}
-            >
+            <Button variant="outline" onClick={() => setDeclineRequest(null)}>
               Cancel
             </Button>
             <Button
-              className="bg-primary hover:bg-primary/90 text-white"
-              onClick={handleSubmitProposal}
-              disabled={!proposeDate || !proposeTime}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={handleSubmitDecline}
+              disabled={!declineReason}
             >
-              Send Proposal
+              Decline Request
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -243,12 +384,15 @@ export default function BookingRequests() {
 
       {/* Tabs */}
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pending">
             Pending ({pendingRequests.length})
           </TabsTrigger>
           <TabsTrigger value="confirmed">
             Confirmed ({confirmedRequests.length})
+          </TabsTrigger>
+          <TabsTrigger value="declined">
+            Declined ({declinedRequests.length})
           </TabsTrigger>
         </TabsList>
 
@@ -256,7 +400,7 @@ export default function BookingRequests() {
         <TabsContent value="pending" className="space-y-4 mt-6">
           {pendingRequests.length > 0 ? (
             pendingRequests.map((request) => (
-              <RequestCard key={request.id} request={request} isPending={true} />
+              <RequestCard key={request.id} request={request} variant="pending" />
             ))
           ) : (
             <Card>
@@ -271,12 +415,27 @@ export default function BookingRequests() {
         <TabsContent value="confirmed" className="space-y-4 mt-6">
           {confirmedRequests.length > 0 ? (
             confirmedRequests.map((request) => (
-              <RequestCard key={request.id} request={request} isPending={false} />
+              <RequestCard key={request.id} request={request} variant="confirmed" />
             ))
           ) : (
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
                 No confirmed requests
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Declined Requests */}
+        <TabsContent value="declined" className="space-y-4 mt-6">
+          {declinedRequests.length > 0 ? (
+            declinedRequests.map((request) => (
+              <RequestCard key={request.id} request={request} variant="declined" />
+            ))
+          ) : (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                No declined requests
               </CardContent>
             </Card>
           )}
