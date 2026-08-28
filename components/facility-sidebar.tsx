@@ -16,17 +16,17 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  LogOut,
+  Users,
 } from 'lucide-react'
 
 const mainNavItems = [
   { icon: BarChart3, label: 'Dashboard', href: '/admin' },
   { icon: Calendar, label: 'Booking Requests', href: '/admin/bookings' },
+  { icon: Users, label: 'User Management', href: '/admin/users' },
 ]
 
 const systemNavItems = [
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
-  { icon: LogOut, label: 'Logout', href: '/logout', external: true },
 ]
 
 export function FacilitySidebar() {
