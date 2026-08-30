@@ -12,7 +12,7 @@ export default function FacilityLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, isInitializing } = useAuth()
+  const { isAuthenticated, isInitializing, user } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function FacilityLayout({
               <SidebarTrigger className="-ml-1" />
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Facility Management</h1>
-                <p className="text-xs text-muted-foreground">Welcome back, admin</p>
+                <p className="text-xs text-muted-foreground">Welcome back, {user?.username || 'admin'}</p>
               </div>
             </div>
             <FacilityHeader />

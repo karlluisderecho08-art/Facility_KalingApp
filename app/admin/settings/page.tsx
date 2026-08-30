@@ -58,13 +58,9 @@ export default function SettingsPage() {
             <span className="text-muted-foreground">System Version</span>
             <span className="text-foreground font-medium">1.0.0</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-border/50">
-            <span className="text-muted-foreground">Last Backup</span>
-            <span className="text-foreground font-medium">{new Date().toLocaleDateString()}</span>
-          </div>
           <div className="flex justify-between py-2">
-            <span className="text-muted-foreground">Database Status</span>
-            <span className="text-primary font-medium">Not Connected</span>
+            <span className="text-muted-foreground">Backend</span>
+            <span className="text-foreground font-medium break-all">{process.env.NEXT_PUBLIC_API_URL}</span>
           </div>
         </div>
       </div>
