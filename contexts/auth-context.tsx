@@ -1,77 +1,89 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { login as apiLogin, logout as apiLogout, getMe, ApiError, type BackendUser } from '@/lib/api'
 
 interface AuthContextType {
   isAuthenticated: boolean
   user: { username: string; email: string } | null
   isLoading: boolean
+  // True only while the one-time startup check (is there already a
+  // valid token?) is running -- separate from isLoading so the login
+  // button doesn't show "Signing in..." before anyone has touched it.
+  isInitializing: boolean
   error: string | null
-  login: (username: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const AUTH_STORAGE_KEY = 'kalingapp-facility-auth'
+function toDisplayUser(backendUser: BackendUser) {
+  // The backend's User model has no separate "username" field (it logs
+  // in with email) -- existing screens expect { username, email } though,
+  // so we derive a display username from the email's local part.
+  return { username: backendUser.email.split('@')[0], email: backendUser.email }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<{ username: string; email: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // On load, check for an existing token and confirm it's still valid
+  // (rather than trusting whatever was last saved) by re-fetching /auth/me/.
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    let cancelled = false
 
-    const stored = window.localStorage.getItem(AUTH_STORAGE_KEY)
-    if (stored) {
-      try {
-        const parsedUser = JSON.parse(stored)
-        setUser(parsedUser)
-        setIsAuthenticated(true)
-      } catch (err) {
-        window.localStorage.removeItem(AUTH_STORAGE_KEY)
-      }
+    getMe()
+      .then((backendUser) => {
+        if (cancelled) return
+        if (backendUser && backendUser.role === 'facility_staff') {
+          setUser(toDisplayUser(backendUser))
+          setIsAuthenticated(true)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsInitializing(false)
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // Simple demo validation
-      if (username === 'admin' && password === 'admin123') {
-        const loggedInUser = { username, email: `${username}@facility.local` }
-        setUser(loggedInUser)
-        setIsAuthenticated(true)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(loggedInUser))
-        }
-      } else {
-        setError('Invalid username or password')
-        setIsAuthenticated(false)
-      }
+      const backendUser = await apiLogin(email, password)
+      setUser(toDisplayUser(backendUser))
+      setIsAuthenticated(true)
     } catch (err) {
-      setError('An error occurred during login')
       setIsAuthenticated(false)
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError('Could not reach the server. Please try again.')
+      }
+      throw err
     } finally {
       setIsLoading(false)
     }
   }, [])
 
   const logout = useCallback(() => {
+    apiLogout()
     setUser(null)
     setIsAuthenticated(false)
     setError(null)
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY)
-    }
   }, [])
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, error, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, isInitializing, error, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

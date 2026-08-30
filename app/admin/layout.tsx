@@ -12,16 +12,19 @@ export default function FacilityLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isInitializing } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for the initial /auth/me/ check to finish before deciding to
+    // redirect -- otherwise an already-logged-in user briefly bounces to
+    // /login on every page refresh while that check is still in flight.
+    if (!isInitializing && !isAuthenticated) {
       router.push('/login')
     }
-  }, [isAuthenticated, router])
+  }, [isInitializing, isAuthenticated, router])
 
-  if (!isAuthenticated) return null
+  if (isInitializing || !isAuthenticated) return null
 
   return (
     <SidebarProvider defaultOpen={true}>
