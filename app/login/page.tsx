@@ -54,16 +54,12 @@ export default function LoginForm() {
             <p className="text-xs text-muted-foreground">Sign in to access the admin dashboard</p>
           </div>
 
-          {/* Demo Credentials -- seeded by the backend's seed_facility_staff
-              management command, not hardcoded here. Remove this box once
-              real facility staff accounts exist. */}
-          <div className="bg-light-pink/50 border border-primary/20 rounded-xl p-3 mb-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-primary">Demo Credentials:</span>
-              <br />
-              Email: <span className="font-mono text-foreground">staff@kalingapp.demo</span> · Password: <span className="font-mono text-foreground">demo-only-not-a-real-password</span>
-            </p>
-          </div>
+          {/* The working demo credentials that used to be printed here are
+              gone on purpose. This dashboard can read real mothers'
+              bookings and open donor questionnaires and serology photos,
+              so showing a valid login for it -- on the login page itself,
+              in a public repo -- handed that access to anyone who looked.
+              Staff accounts are provisioned, not advertised. */}
 
           {/* Error */}
           {error && (
