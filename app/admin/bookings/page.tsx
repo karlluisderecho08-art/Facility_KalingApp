@@ -57,25 +57,13 @@ const STATUS_LABELS = {
 }
 
 const DONOR_QUESTIONNAIRE_FIELDS: [string, string][] = [
-  ['currently_lactating_excess', 'Currently lactating and producing milk beyond own infant’s needs'],
-  ['infant_age_months', 'Age of donor’s own infant (months)'],
-  ['consents_to_screening', 'Consents to blood screening and voluntary donation'],
-  ['good_general_health', 'In good general health'],
-  ['being_treated_for_illness', 'Being treated for any acute or chronic illness'],
-  ['recent_fever_or_infection', 'Fever or active infection in the past week'],
-  ['tested_positive_infectious_disease', 'Ever tested positive for HIV/HTLV/Hepatitis/syphilis'],
-  ['partner_tested_positive_or_at_risk', 'Partner tested positive for, or at risk of, HIV/hepatitis'],
-  ['recent_blood_transfusion', 'Blood transfusion in the past 12 months'],
-  ['recent_tattoo_piercing_needle_exposure', 'Tattoo, piercing, or needle-stick exposure in the past 12 months'],
-  ['travel_to_risk_area', 'Traveled to/lived in a disease-risk area'],
-  ['smokes_or_tobacco', 'Smokes or uses tobacco'],
-  ['drinks_alcohol', 'Drinks alcohol'],
-  ['uses_illicit_drugs', 'Uses illicit drugs'],
-  ['on_prescription_medications', 'On prescription medications'],
-  ['uses_herbal_supplements', 'Uses herbal supplements or megadose vitamins'],
-  ['uses_radioactive_or_radiologic', 'Radioactive substances or radiologic treatment'],
-  ['vegan_without_b12', 'Vegan diet without B12 supplementation'],
-  ['recent_live_virus_vaccine', 'Recently received a live-virus vaccine'],
+  ['good_general_health', 'Currently in good general health'],
+  ['lactating_with_excess_supply', 'Baby is under 6 months old and producing more milk than baby needs'],
+  ['free_of_infectious_disease', 'Free from HIV, Hepatitis B & C, and Syphilis'],
+  ['recent_transfusion_or_transplant', 'Blood transfusion or organ transplant in the past 12 months'],
+  ['uses_tobacco_alcohol_or_drugs', 'Smokes, drinks alcohol regularly, or uses recreational drugs'],
+  ['on_medication_or_supplements', 'Taking regular medications or herbal supplements'],
+  ['has_recent_serology_test', 'Has a serological (blood) test taken within the last 6 months'],
 ]
 
 function formatDateTime(preferredDate: string | undefined, preferredTime: string | undefined) {
@@ -360,6 +348,12 @@ export default function BookingRequests() {
                         </span>
                       </div>
                     ))}
+                    {questionnaire.medication_details && (
+                      <div className="flex items-start justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">Medications / supplements</span>
+                        <span className="font-medium shrink-0">{String(questionnaire.medication_details)}</span>
+                      </div>
+                    )}
                     <p className="text-sm pt-2">
                       Serology photo: {questionnaire.photo_attached ? 'Attached' : 'Not attached'}
                     </p>
