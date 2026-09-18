@@ -101,8 +101,12 @@ export default function BookingRequests() {
   const [declineNotes, setDeclineNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [completingId, setCompletingId] = useState<number | null>(null)
   const [advancingId, setAdvancingId] = useState<number | null>(null)
+
+  const [completeRequest, setCompleteRequest] = useState<MilkBankRequest | null>(null)
+  const [completeAmountOz, setCompleteAmountOz] = useState('')
+  const [completeError, setCompleteError] = useState<string | null>(null)
+  const [isCompleting, setIsCompleting] = useState(false)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -189,21 +193,35 @@ export default function BookingRequests() {
     }
   }
 
-  const handleCompleteRequest = async (request: MilkBankRequest) => {
-    setActionError(null)
-    setCompletingId(request.id)
+  const handleOpenComplete = (request: MilkBankRequest) => {
+    setCompleteRequest(request)
+    setCompleteAmountOz('')
+    setCompleteError(null)
+  }
+
+  const handleSubmitComplete = async () => {
+    if (!completeRequest) return
+    const amount = parseFloat(completeAmountOz)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setCompleteError('Enter how many ounces before confirming.')
+      return
+    }
+    setIsCompleting(true)
+    setCompleteError(null)
     try {
-      const res = await apiFetch(`/milkbank/requests/${request.id}/confirm-completion/`, {
+      const res = await apiFetch(`/milkbank/requests/${completeRequest.id}/confirm-completion/`, {
         method: 'POST',
+        body: JSON.stringify({ amount_oz: amount }),
       })
       if (!res.ok) throw new Error((await res.json())?.detail || 'Could not mark this request as completed')
       const updated = await res.json()
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
       setDetailsRequest((prev) => (prev && prev.id === updated.id ? updated : prev))
+      setCompleteRequest(null)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not mark this request as completed')
+      setCompleteError(err instanceof Error ? err.message : 'Could not mark this request as completed')
     } finally {
-      setCompletingId(null)
+      setIsCompleting(false)
     }
   }
 
@@ -357,14 +375,9 @@ export default function BookingRequests() {
               {request.current_sub_status === 'scheduled' && (
                 <Button
                   className="w-full bg-primary hover:bg-primary/90 text-white"
-                  onClick={() => handleCompleteRequest(request)}
-                  disabled={completingId === request.id}
+                  onClick={() => handleOpenComplete(request)}
                 >
-                  {completingId === request.id ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-2" />
-                  )}
+                  <Check className="h-4 w-4 mr-2" />
                   Confirm Completion
                 </Button>
               )}
@@ -529,14 +542,9 @@ export default function BookingRequests() {
             {detailsRequest?.current_sub_status === 'scheduled' && (
               <Button
                 className="bg-primary hover:bg-primary/90 text-white"
-                onClick={() => detailsRequest && handleCompleteRequest(detailsRequest)}
-                disabled={completingId === detailsRequest?.id}
+                onClick={() => detailsRequest && handleOpenComplete(detailsRequest)}
               >
-                {completingId === detailsRequest?.id ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Check className="h-4 w-4 mr-2" />
-                )}
+                <Check className="h-4 w-4 mr-2" />
                 Confirm Completion
               </Button>
             )}
@@ -598,6 +606,52 @@ export default function BookingRequests() {
               disabled={!declineReason || isSubmitting}
             >
               {isSubmitting ? 'Declining...' : 'Decline Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Completion Dialog */}
+      <Dialog open={!!completeRequest} onOpenChange={(open) => !open && setCompleteRequest(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Completion</DialogTitle>
+            <DialogDescription>
+              {completeRequest?.request_type === 'DONOR'
+                ? 'Record how many ounces this mother donated. This adds to the facility’s milk stock.'
+                : 'Record how many ounces were dispensed to this mother. This subtracts from the facility’s milk stock.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {completeRequest?.request_type === 'DONOR' ? 'Ounces produced' : 'Ounces dispensed'}{' '}
+                <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={completeAmountOz}
+                onChange={(e) => setCompleteAmountOz(e.target.value)}
+                placeholder="e.g. 4.5"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            {completeError && <p className="text-sm text-destructive">{completeError}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteRequest(null)} disabled={isCompleting}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 text-white"
+              onClick={handleSubmitComplete}
+              disabled={isCompleting}
+            >
+              {isCompleting ? 'Confirming...' : 'Confirm Completion'}
             </Button>
           </DialogFooter>
         </DialogContent>
