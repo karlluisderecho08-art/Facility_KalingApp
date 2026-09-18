@@ -92,6 +92,7 @@ export default function BookingRequests() {
   const [declineNotes, setDeclineNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [completingId, setCompletingId] = useState<number | null>(null)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -157,6 +158,24 @@ export default function BookingRequests() {
       setActionError(err instanceof Error ? err.message : 'Could not decline this request')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCompleteRequest = async (request: MilkBankRequest) => {
+    setActionError(null)
+    setCompletingId(request.id)
+    try {
+      const res = await apiFetch(`/milkbank/requests/${request.id}/confirm-completion/`, {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not mark this request as completed')
+      const updated = await res.json()
+      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setDetailsRequest((prev) => (prev && prev.id === updated.id ? updated : prev))
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not mark this request as completed')
+    } finally {
+      setCompletingId(null)
     }
   }
 
@@ -231,6 +250,9 @@ export default function BookingRequests() {
                     {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
                   </Badge>
                 )}
+                {variant === 'confirmed' && request.stages[request.current_stage_index] && (
+                  <Badge variant="secondary">{request.stages[request.current_stage_index]}</Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {formatDateTime(request.preferred_date, request.preferred_time)}
@@ -284,9 +306,25 @@ export default function BookingRequests() {
           </div>
 
           {variant === 'confirmed' && (
-            <div className="flex items-center gap-2 text-accent text-sm font-medium pt-2">
-              <Check className="h-4 w-4" />
-              {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-2 text-accent text-sm font-medium">
+                <Check className="h-4 w-4" />
+                {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
+              </div>
+              {request.current_sub_status === 'scheduled' && (
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-white"
+                  onClick={() => handleCompleteRequest(request)}
+                  disabled={completingId === request.id}
+                >
+                  {completingId === request.id ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
+                  Confirm Completion
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -406,6 +444,20 @@ export default function BookingRequests() {
           </div>
 
           <DialogFooter>
+            {detailsRequest?.current_sub_status === 'scheduled' && (
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white"
+                onClick={() => detailsRequest && handleCompleteRequest(detailsRequest)}
+                disabled={completingId === detailsRequest?.id}
+              >
+                {completingId === detailsRequest?.id ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                Confirm Completion
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setDetailsRequest(null)}>
               Close
             </Button>
