@@ -82,6 +82,50 @@ function formatDateOnly(date: string) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// Where a confirmed request sits in its journey, for sorting/grouping the
+// Confirmed tab -- earliest-waiting-on-someone first, Completed always
+// last. A 'scheduled' request is ranked (and labeled) by its actual
+// current_stage_index rather than lumped into one "Scheduled" bucket, so
+// e.g. Counseling and Testing sorts ahead of Breastmilk Analysis.
+function phaseRank(request: MilkBankRequest): number {
+  switch (request.current_sub_status) {
+    case 'awaiting_attendance':
+      return 0
+    case 'counter_offered':
+      return 1
+    case 'scheduled':
+      return 10 + request.current_stage_index
+    case 'completed':
+      return 1000
+    default:
+      return 500
+  }
+}
+
+function phaseLabel(request: MilkBankRequest): string {
+  if (request.current_sub_status === 'scheduled') {
+    return request.stages[request.current_stage_index] || STATUS_LABELS.scheduled
+  }
+  return STATUS_LABELS[request.current_sub_status] || request.current_sub_status
+}
+
+function groupByPhase(requests: MilkBankRequest[]): [string, MilkBankRequest[]][] {
+  const sorted = [...requests].sort(
+    (a, b) => phaseRank(a) - phaseRank(b) || a.preferred_date.localeCompare(b.preferred_date)
+  )
+  const groups: [string, MilkBankRequest[]][] = []
+  for (const request of sorted) {
+    const label = phaseLabel(request)
+    const lastGroup = groups[groups.length - 1]
+    if (lastGroup && lastGroup[0] === label) {
+      lastGroup[1].push(request)
+    } else {
+      groups.push([label, [request]])
+    }
+  }
+  return groups
+}
+
 export default function BookingRequests() {
   const searchParams = useSearchParams()
   const defaultTab = searchParams.get('tab') || 'pending'
@@ -131,6 +175,7 @@ export default function BookingRequests() {
   const confirmedRequests = requests.filter(
     (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
   )
+  const confirmedByPhase = groupByPhase(confirmedRequests)
 
   const handleConfirm = async (request: MilkBankRequest) => {
     setActionError(null)
@@ -372,15 +417,16 @@ export default function BookingRequests() {
                   Mark {request.stages[request.current_stage_index + 1]} as done
                 </Button>
               )}
-              {request.current_sub_status === 'scheduled' && (
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-white"
-                  onClick={() => handleOpenComplete(request)}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm Completion
-                </Button>
-              )}
+              {request.current_sub_status === 'scheduled' &&
+                request.current_stage_index >= request.stages.length - 1 && (
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 text-white"
+                    onClick={() => handleOpenComplete(request)}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirm Completion
+                  </Button>
+                )}
             </div>
           )}
         </CardContent>
@@ -539,15 +585,16 @@ export default function BookingRequests() {
                   Mark {detailsRequest.stages[detailsRequest.current_stage_index + 1]} as done
                 </Button>
               )}
-            {detailsRequest?.current_sub_status === 'scheduled' && (
-              <Button
-                className="bg-primary hover:bg-primary/90 text-white"
-                onClick={() => detailsRequest && handleOpenComplete(detailsRequest)}
-              >
-                <Check className="h-4 w-4 mr-2" />
-                Confirm Completion
-              </Button>
-            )}
+            {detailsRequest?.current_sub_status === 'scheduled' &&
+              detailsRequest.current_stage_index >= detailsRequest.stages.length - 1 && (
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-white"
+                  onClick={() => detailsRequest && handleOpenComplete(detailsRequest)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm Completion
+                </Button>
+              )}
             <Button variant="outline" onClick={() => setDetailsRequest(null)}>
               Close
             </Button>
@@ -698,10 +745,19 @@ export default function BookingRequests() {
             )}
           </TabsContent>
 
-          <TabsContent value="confirmed" className="space-y-4 mt-6">
-            {confirmedRequests.length > 0 ? (
-              confirmedRequests.map((request) => (
-                <RequestCard key={request.id} request={request} variant="confirmed" />
+          <TabsContent value="confirmed" className="space-y-6 mt-6">
+            {confirmedByPhase.length > 0 ? (
+              confirmedByPhase.map(([phase, phaseRequests]) => (
+                <div key={phase} className="space-y-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {phase} ({phaseRequests.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {phaseRequests.map((request) => (
+                      <RequestCard key={request.id} request={request} variant="confirmed" />
+                    ))}
+                  </div>
+                </div>
               ))
             ) : (
               <Card>
