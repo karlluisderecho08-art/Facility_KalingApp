@@ -35,10 +35,6 @@ interface StaffUser {
   email: string
   mom_name: string
   baby_name: string
-  baby_age_weeks: number | null
-  breastfeeding_status: string
-  baby_birth_date: string | null
-  pediatric_clinic: string
   tracking_streaks: number
   total_drawn_oz: number
   location_consent_given: boolean
@@ -134,10 +130,6 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="space-y-2 text-sm py-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Baby's name</span><span>{detailsUser?.baby_name || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Baby's age</span><span>{detailsUser?.baby_age_weeks != null ? `${detailsUser.baby_age_weeks} weeks` : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Baby's birth date</span><span>{detailsUser?.baby_birth_date || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Breastfeeding status</span><span>{detailsUser?.breastfeeding_status || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pediatric clinic</span><span>{detailsUser?.pediatric_clinic || '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Tracking streak</span><span>{detailsUser?.tracking_streaks} days</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Total drawn</span><span>{detailsUser?.total_drawn_oz} oz</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Location shared</span><span>{detailsUser?.location_consent_given ? 'Yes' : 'No'}</span></div>
