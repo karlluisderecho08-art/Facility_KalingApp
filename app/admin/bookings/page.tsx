@@ -34,6 +34,10 @@ interface MilkBankRequest {
   counter_offer_time: string
   owner_email: string
   owner_name: string
+  needs_representative: boolean
+  representative_name: string
+  representative_birthday: string | null
+  representative_contact_number: string
 }
 
 interface DonorQuestionnaire {
@@ -73,6 +77,11 @@ function formatDateTime(preferredDate: string | undefined, preferredTime: string
   return preferredTime ? `${dateStr} · ${preferredTime}` : dateStr
 }
 
+function formatDateOnly(date: string) {
+  const d = new Date(`${date}T00:00:00`)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 export default function BookingRequests() {
   const searchParams = useSearchParams()
   const defaultTab = searchParams.get('tab') || 'pending'
@@ -93,6 +102,7 @@ export default function BookingRequests() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
+  const [advancingId, setAdvancingId] = useState<number | null>(null)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -130,6 +140,24 @@ export default function BookingRequests() {
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not accept this request')
+    }
+  }
+
+  const handleAdvanceStage = async (request: MilkBankRequest) => {
+    setActionError(null)
+    setAdvancingId(request.id)
+    try {
+      const res = await apiFetch(`/milkbank/requests/${request.id}/advance-stage/`, {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not advance this request')
+      const updated = await res.json()
+      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setDetailsRequest((prev) => (prev && prev.id === updated.id ? updated : prev))
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not advance this request')
+    } finally {
+      setAdvancingId(null)
     }
   }
 
@@ -311,6 +339,21 @@ export default function BookingRequests() {
                 <Check className="h-4 w-4" />
                 {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
               </div>
+              {request.current_sub_status === 'scheduled' && request.current_stage_index < request.stages.length - 1 && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleAdvanceStage(request)}
+                  disabled={advancingId === request.id}
+                >
+                  {advancingId === request.id ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
+                  Mark {request.stages[request.current_stage_index + 1]} as done
+                </Button>
+              )}
               {request.current_sub_status === 'scheduled' && (
                 <Button
                   className="w-full bg-primary hover:bg-primary/90 text-white"
@@ -382,6 +425,30 @@ export default function BookingRequests() {
               )}
             </div>
 
+            {detailsRequest?.request_type === 'RECIPIENT' && detailsRequest?.needs_representative && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Pickup Representative</h3>
+                <div className="flex items-start justify-between gap-4 text-sm">
+                  <span className="text-muted-foreground">Name</span>
+                  <span className="font-medium shrink-0">{detailsRequest.representative_name || '—'}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4 text-sm">
+                  <span className="text-muted-foreground">Birthday</span>
+                  <span className="font-medium shrink-0">
+                    {detailsRequest.representative_birthday
+                      ? formatDateOnly(detailsRequest.representative_birthday)
+                      : '—'}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-4 text-sm">
+                  <span className="text-muted-foreground">Contact number</span>
+                  <span className="font-medium shrink-0">
+                    {detailsRequest.representative_contact_number || '—'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {detailsRequest?.request_type === 'DONOR' && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Donor Questionnaire</h3>
@@ -444,6 +511,21 @@ export default function BookingRequests() {
           </div>
 
           <DialogFooter>
+            {detailsRequest?.current_sub_status === 'scheduled' &&
+              detailsRequest.current_stage_index < detailsRequest.stages.length - 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => detailsRequest && handleAdvanceStage(detailsRequest)}
+                  disabled={advancingId === detailsRequest?.id}
+                >
+                  {advancingId === detailsRequest?.id ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
+                  Mark {detailsRequest.stages[detailsRequest.current_stage_index + 1]} as done
+                </Button>
+              )}
             {detailsRequest?.current_sub_status === 'scheduled' && (
               <Button
                 className="bg-primary hover:bg-primary/90 text-white"
