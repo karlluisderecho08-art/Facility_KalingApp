@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, X, Mail, Building2, CalendarClock, Eye, Loader2 } from 'lucide-react'
+import { Check, X, Mail, Building2, CalendarClock, Eye, Loader2, Search } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -133,6 +134,7 @@ export default function BookingRequests() {
   const [requests, setRequests] = useState<MilkBankRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const [detailsRequest, setDetailsRequest] = useState<MilkBankRequest | null>(null)
   const [questionnaire, setQuestionnaire] = useState<DonorQuestionnaire | null>(null)
@@ -170,9 +172,17 @@ export default function BookingRequests() {
     loadRequests()
   }, [loadRequests])
 
-  const pendingRequests = requests.filter((r) => r.current_sub_status === 'pending')
-  const declinedRequests = requests.filter((r) => ['declined', 'expired'].includes(r.current_sub_status))
-  const confirmedRequests = requests.filter(
+  const query = searchTerm.trim().toLowerCase()
+  const matchesSearch = (r: MilkBankRequest) =>
+    !query ||
+    r.owner_name.toLowerCase().includes(query) ||
+    r.owner_email.toLowerCase().includes(query) ||
+    r.allocated_facility_name.toLowerCase().includes(query)
+
+  const searchedRequests = requests.filter(matchesSearch)
+  const pendingRequests = searchedRequests.filter((r) => r.current_sub_status === 'pending')
+  const declinedRequests = searchedRequests.filter((r) => ['declined', 'expired'].includes(r.current_sub_status))
+  const confirmedRequests = searchedRequests.filter(
     (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
   )
   const confirmedByPhase = groupByPhase(confirmedRequests)
@@ -436,9 +446,20 @@ export default function BookingRequests() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-balance">Booking Requests</h1>
-        <p className="text-muted-foreground mt-2">Confirm or decline donor screening and recipient requests</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-balance">Booking Requests</h1>
+          <p className="text-muted-foreground mt-2">Confirm or decline donor screening and recipient requests</p>
+        </div>
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by mother, email, or facility..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {actionError && (
@@ -740,7 +761,9 @@ export default function BookingRequests() {
               ))
             ) : (
               <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">No pending requests</CardContent>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {query ? 'No pending requests match your search' : 'No pending requests'}
+                </CardContent>
               </Card>
             )}
           </TabsContent>
@@ -761,7 +784,9 @@ export default function BookingRequests() {
               ))
             ) : (
               <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">No confirmed requests</CardContent>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {query ? 'No confirmed requests match your search' : 'No confirmed requests'}
+                </CardContent>
               </Card>
             )}
           </TabsContent>
@@ -773,7 +798,9 @@ export default function BookingRequests() {
               ))
             ) : (
               <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">No declined requests</CardContent>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {query ? 'No declined requests match your search' : 'No declined requests'}
+                </CardContent>
               </Card>
             )}
           </TabsContent>
