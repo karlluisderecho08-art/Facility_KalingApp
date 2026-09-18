@@ -84,6 +84,8 @@ export default function BookingRequests() {
   const [detailsRequest, setDetailsRequest] = useState<MilkBankRequest | null>(null)
   const [questionnaire, setQuestionnaire] = useState<DonorQuestionnaire | null>(null)
   const [questionnaireState, setQuestionnaireState] = useState<QuestionnaireState>('idle')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoState, setPhotoState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
 
   const [declineRequest, setDeclineRequest] = useState<MilkBankRequest | null>(null)
   const [declineReason, setDeclineReason] = useState('')
@@ -167,6 +169,8 @@ export default function BookingRequests() {
     }
     setQuestionnaireState('loading')
     setQuestionnaire(null)
+    setPhotoUrl(null)
+    setPhotoState('idle')
     try {
       const res = await apiFetch(`/milkbank/requests/${request.id}/donor-questionnaire/`)
       if (res.status === 404) {
@@ -174,10 +178,27 @@ export default function BookingRequests() {
         return
       }
       if (!res.ok) throw new Error()
-      setQuestionnaire(await res.json())
+      const data = await res.json()
+      setQuestionnaire(data)
       setQuestionnaireState('loaded')
+      if (data.photo_attached) {
+        loadSerologyPhoto(request.id)
+      }
     } catch {
       setQuestionnaireState('error')
+    }
+  }
+
+  const loadSerologyPhoto = async (requestId: number) => {
+    setPhotoState('loading')
+    try {
+      const res = await apiFetch(`/milkbank/requests/${requestId}/serology-photo/`)
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      setPhotoUrl(URL.createObjectURL(blob))
+      setPhotoState('loaded')
+    } catch {
+      setPhotoState('error')
     }
   }
 
@@ -294,6 +315,9 @@ export default function BookingRequests() {
             setDetailsRequest(null)
             setQuestionnaire(null)
             setQuestionnaireState('idle')
+            if (photoUrl) URL.revokeObjectURL(photoUrl)
+            setPhotoUrl(null)
+            setPhotoState('idle')
           }
         }}
       >
@@ -354,9 +378,27 @@ export default function BookingRequests() {
                         <span className="font-medium shrink-0">{String(questionnaire.medication_details)}</span>
                       </div>
                     )}
-                    <p className="text-sm pt-2">
-                      Serology photo: {questionnaire.photo_attached ? 'Attached' : 'Not attached'}
-                    </p>
+                    <div className="pt-2 space-y-2">
+                      <p className="text-sm">
+                        Serology photo: {questionnaire.photo_attached ? 'Attached' : 'Not attached'}
+                      </p>
+                      {questionnaire.photo_attached && photoState === 'loading' && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Loading photo...
+                        </p>
+                      )}
+                      {questionnaire.photo_attached && photoState === 'error' && (
+                        <p className="text-sm text-destructive">Could not load serology photo.</p>
+                      )}
+                      {questionnaire.photo_attached && photoState === 'loaded' && photoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoUrl}
+                          alt="Serology test photo"
+                          className="max-w-full rounded-lg border border-border"
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
