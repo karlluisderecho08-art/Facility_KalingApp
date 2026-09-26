@@ -36,7 +36,7 @@ interface StaffUser {
   mom_name: string
   baby_name: string
   tracking_streaks: number
-  total_drawn_oz: number
+  total_drawn_ml: number
   location_consent_given: boolean
   is_active: boolean
   date_joined: string
@@ -131,7 +131,7 @@ export default function UsersPage() {
           <div className="space-y-2 text-sm py-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Baby's name</span><span>{detailsUser?.baby_name || '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Tracking streak</span><span>{detailsUser?.tracking_streaks} days</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Total drawn</span><span>{detailsUser?.total_drawn_oz} oz</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total drawn</span><span>{detailsUser?.total_drawn_ml} mL</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Location shared</span><span>{detailsUser?.location_consent_given ? 'Yes' : 'No'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Joined</span><span>{detailsUser ? new Date(detailsUser.date_joined).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span></div>
           </div>

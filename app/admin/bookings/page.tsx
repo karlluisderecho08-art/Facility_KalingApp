@@ -150,7 +150,7 @@ export default function BookingRequests() {
   const [advancingId, setAdvancingId] = useState<number | null>(null)
 
   const [completeRequest, setCompleteRequest] = useState<MilkBankRequest | null>(null)
-  const [completeAmountOz, setCompleteAmountOz] = useState('')
+  const [completeAmountMl, setCompleteAmountMl] = useState('')
   const [completeError, setCompleteError] = useState<string | null>(null)
   const [isCompleting, setIsCompleting] = useState(false)
 
@@ -250,15 +250,18 @@ export default function BookingRequests() {
 
   const handleOpenComplete = (request: MilkBankRequest) => {
     setCompleteRequest(request)
-    setCompleteAmountOz('')
+    setCompleteAmountMl('')
     setCompleteError(null)
   }
 
   const handleSubmitComplete = async () => {
     if (!completeRequest) return
-    const amount = parseFloat(completeAmountOz)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setCompleteError('Enter how many ounces before confirming.')
+    // Whole millilitres only -- the backend stores stock as an integer
+    // count of mL and rejects a fraction, so catch it here rather than
+    // surfacing a serializer error.
+    const amount = Number(completeAmountMl)
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setCompleteError('Enter how many millilitres (a whole number) before confirming.')
       return
     }
     setIsCompleting(true)
@@ -266,7 +269,7 @@ export default function BookingRequests() {
     try {
       const res = await apiFetch(`/milkbank/requests/${completeRequest.id}/confirm-completion/`, {
         method: 'POST',
-        body: JSON.stringify({ amount_oz: amount }),
+        body: JSON.stringify({ amount_ml: amount }),
       })
       if (!res.ok) throw new Error((await res.json())?.detail || 'Could not mark this request as completed')
       const updated = await res.json()
@@ -686,24 +689,26 @@ export default function BookingRequests() {
             <DialogTitle>Confirm Completion</DialogTitle>
             <DialogDescription>
               {completeRequest?.request_type === 'DONOR'
-                ? 'Record how many ounces this mother donated. This adds to the facility’s milk stock.'
-                : 'Record how many ounces were dispensed to this mother. This subtracts from the facility’s milk stock.'}
+                ? 'Record how many millilitres this mother donated. This adds to the facility’s milk stock.'
+                : 'Record how many millilitres were dispensed to this mother. This subtracts from the facility’s milk stock.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {completeRequest?.request_type === 'DONOR' ? 'Ounces produced' : 'Ounces dispensed'}{' '}
+                {completeRequest?.request_type === 'DONOR'
+                  ? 'Millilitres produced (mL)'
+                  : 'Millilitres dispensed (mL)'}{' '}
                 <span className="text-destructive">*</span>
               </label>
               <input
                 type="number"
-                min="0"
-                step="0.1"
-                value={completeAmountOz}
-                onChange={(e) => setCompleteAmountOz(e.target.value)}
-                placeholder="e.g. 4.5"
+                min="1"
+                step="1"
+                value={completeAmountMl}
+                onChange={(e) => setCompleteAmountMl(e.target.value)}
+                placeholder="e.g. 120"
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
