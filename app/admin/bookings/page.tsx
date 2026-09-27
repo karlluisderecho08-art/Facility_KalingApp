@@ -49,7 +49,29 @@ interface DonorQuestionnaire {
 
 type QuestionnaireState = 'idle' | 'loading' | 'loaded' | 'none' | 'error'
 
-const DECLINE_REASONS = ['No Available Doctor', 'Outdated Serological Test']
+const DECLINE_REASONS = ['No Available Doctor', 'Outdated Serological Test', 'Others']
+
+// "Others" is the only reason that says nothing on its own. The reason and the
+// notes are concatenated into the single `staff_message` the mother reads (see
+// handleSubmitDecline), so picking "Others" with an empty notes box would send
+// her the literal string "Others" and no explanation at all -- worse than not
+// offering the option. So notes become mandatory the moment it is selected.
+const OTHER_REASON = 'Others'
+
+// The donor screening phases, as named by the backend's DONOR_STAGES. Matched
+// against request.stages[] by NAME rather than by stage index on purpose: the
+// recipient pathway has a different, shorter stage list, so an index-based
+// check would drag a recipient's "Booking Confirmation" into screening. If the
+// backend ever renames a stage this tab would silently show nothing, which is
+// the failure mode to watch for -- the names are the contract here.
+const SCREENING_STAGES = ['Counseling and Testing', 'Breastmilk Analysis']
+
+// True when this request is sitting in a screening phase right now: the
+// facility has live work in progress on it, rather than just a booking.
+function isInScreening(request: MilkBankRequest): boolean {
+  if (request.current_sub_status !== 'scheduled') return false
+  return SCREENING_STAGES.includes(request.stages[request.current_stage_index])
+}
 
 const STATUS_LABELS = {
   pending: 'Pending',
@@ -185,7 +207,13 @@ export default function BookingRequests() {
   const confirmedRequests = searchedRequests.filter(
     (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
   )
-  const confirmedByPhase = groupByPhase(confirmedRequests)
+  // Screening is a VIEW over the confirmed set, not a separate bucket -- a
+  // request in "Breastmilk Analysis" is still `scheduled`, and must not turn up
+  // in two tabs at once. So it is derived here and excluded from the Confirmed
+  // list below, which keeps the counts on the two tabs mutually exclusive.
+  const screeningRequests = confirmedRequests.filter(isInScreening)
+  const confirmedOutsideScreening = confirmedRequests.filter((r) => !isInScreening(r))
+  const screeningByPhase = groupByPhase(screeningRequests)
 
   const handleConfirm = async (request: MilkBankRequest) => {
     setActionError(null)
@@ -229,6 +257,12 @@ export default function BookingRequests() {
 
   const handleSubmitDecline = async () => {
     if (!declineReason || !declineRequest) return
+    // "Others" carries no information on its own, so it must never go out
+    // alone -- the mother would be told she was declined with the single
+    // word "Others" as the explanation. The button is disabled for this case
+    // too, but the guard is repeated here because the handler must be safe
+    // on its own rather than trusting the button's disabled state.
+    if (declineReason === OTHER_REASON && !declineNotes.trim()) return
     setIsSubmitting(true)
     setActionError(null)
     const staff_message = declineNotes ? `${declineReason} — ${declineNotes}` : declineReason
@@ -656,14 +690,30 @@ export default function BookingRequests() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (Optional)</label>
+              <label className="text-sm font-medium">
+                Notes{' '}
+                {declineReason === OTHER_REASON ? (
+                  <span className="text-destructive">*</span>
+                ) : (
+                  <span className="font-normal text-muted-foreground">(Optional)</span>
+                )}
+              </label>
               <textarea
                 value={declineNotes}
                 onChange={(e) => setDeclineNotes(e.target.value)}
-                placeholder="Additional details for this decline..."
+                placeholder={
+                  declineReason === OTHER_REASON
+                    ? 'Explain the reason -- the mother reads this...'
+                    : 'Additional details for this decline...'
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 rows={3}
               />
+              {declineReason === OTHER_REASON && !declineNotes.trim() && (
+                <p className="text-xs text-destructive">
+                  A reason is required when declining as &ldquo;Others&rdquo;.
+                </p>
+              )}
             </div>
           </div>
 
@@ -674,7 +724,7 @@ export default function BookingRequests() {
             <Button
               className="bg-destructive hover:bg-destructive/90 text-white"
               onClick={handleSubmitDecline}
-              disabled={!declineReason || isSubmitting}
+              disabled={!declineReason || (declineReason === OTHER_REASON && !declineNotes.trim()) || isSubmitting}
             >
               {isSubmitting ? 'Declining...' : 'Decline Request'}
             </Button>
@@ -753,11 +803,43 @@ export default function BookingRequests() {
 
       {!isLoading && !loadError && (
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pending">Pending ({pendingRequests.length})</TabsTrigger>
-            <TabsTrigger value="confirmed">Confirmed ({confirmedRequests.length})</TabsTrigger>
+            <TabsTrigger value="screening">
+              Screening{' '}
+              <span className="ml-1 rounded-full bg-[#E8DEF8] px-1.5 py-0.5 text-[10px] font-semibold text-[#4A378B]">
+                {screeningRequests.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="confirmed">Confirmed ({confirmedOutsideScreening.length})</TabsTrigger>
             <TabsTrigger value="declined">Declined ({declinedRequests.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="screening" className="space-y-6 mt-6">
+            {screeningByPhase.length > 0 ? (
+              screeningByPhase.map(([phase, phaseRequests]) => (
+                <div key={phase} className="space-y-4">
+                  <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#4A378B]">
+                    <span className="inline-block h-2 w-2 rounded-full bg-[#7C4DBE]" />
+                    {phase} ({phaseRequests.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {phaseRequests.map((request) => (
+                      <RequestCard key={request.id} request={request} variant="confirmed" />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  {query
+                    ? 'No screening requests match your search'
+                    : 'No requests are in screening right now'}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
           <TabsContent value="pending" className="space-y-4 mt-6">
             {pendingRequests.length > 0 ? (
@@ -774,8 +856,8 @@ export default function BookingRequests() {
           </TabsContent>
 
           <TabsContent value="confirmed" className="space-y-6 mt-6">
-            {confirmedByPhase.length > 0 ? (
-              confirmedByPhase.map(([phase, phaseRequests]) => (
+            {confirmedOutsideScreening.length > 0 ? (
+              groupByPhase(confirmedOutsideScreening).map(([phase, phaseRequests]) => (
                 <div key={phase} className="space-y-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {phase} ({phaseRequests.length})

@@ -9,7 +9,12 @@ export default function SettingsPage() {
   const { user } = useAuth()
 
   return (
-    <div className="p-8 space-y-8">
+    // No horizontal padding here on purpose: app/admin/layout.tsx already wraps
+    // every page in `p-4 md:p-8`. This page used to add its own `p-8` on top of
+    // that, so it alone rendered with a 12/16px gutter while Booking Requests,
+    // User Management and the Dashboard all sat at 4/8px -- the page content
+    // visibly indented relative to its own sidebar and header.
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
