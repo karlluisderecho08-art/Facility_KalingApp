@@ -148,7 +148,7 @@ export default function UsersPage() {
             <CardTitle className="text-sm font-medium">Total Registered Mothers</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{isLoading ? '—' : users.length}</p>
+            <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : users.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -156,7 +156,7 @@ export default function UsersPage() {
             <CardTitle className="text-sm font-medium">Active Accounts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{isLoading ? '—' : activeCount}</p>
+            <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : activeCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -164,7 +164,7 @@ export default function UsersPage() {
             <CardTitle className="text-sm font-medium">Location Shared</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{isLoading ? '—' : locationSharedCount}</p>
+            <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : locationSharedCount}</p>
           </CardContent>
         </Card>
       </div>

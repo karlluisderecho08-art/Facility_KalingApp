@@ -3,16 +3,21 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { FacilitySidebar } from '@/components/facility-sidebar'
 import { FacilityHeader } from '@/components/facility-header'
 
+// Structured to match the admin dashboard's layout (KalingApp/app/admin/layout.tsx)
+// exactly: a fixed, non-collapsible sidebar and a plain flex shell, rather than
+// the shadcn SidebarProvider/SidebarTrigger pattern this used before -- that
+// collapsible-sidebar primitive has its own default sizing and chrome (a
+// trigger button, a sticky inner bar) that admin's sidebar doesn't have, which
+// is what made the two look like different products side by side.
 export default function FacilityLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, isInitializing, user } = useAuth()
+  const { isAuthenticated, isInitializing } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -24,28 +29,27 @@ export default function FacilityLayout({
     }
   }, [isInitializing, isAuthenticated, router])
 
-  if (isInitializing || !isAuthenticated) return null
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) return null
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <div className="flex h-screen bg-background text-foreground">
       <FacilitySidebar />
-      <main className="w-full">
-        <div className="border-b border-border sticky top-0 z-40 bg-white">
-          <div className="flex items-center justify-between px-8 py-4">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="-ml-1" />
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Facility Management</h1>
-                <p className="text-xs text-muted-foreground">Welcome back, {user?.username || 'admin'}</p>
-              </div>
-            </div>
-            <FacilityHeader />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <FacilityHeader />
+        <main className="flex-1 overflow-auto">
+          <div className="p-4 md:p-8">
+            {children}
           </div>
-        </div>
-        <div className="p-4 md:p-8">
-          {children}
-        </div>
-      </main>
-    </SidebarProvider>
+        </main>
+      </div>
+    </div>
   )
 }

@@ -76,10 +76,12 @@ export default function FacilityDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Dashboard Header */}
+      {/* Dashboard Header -- text-3xl/h1, matching the admin dashboard's own
+          page headers and this app's own Booking Requests/User Management/
+          Settings pages (all text-3xl font-bold h1s). */}
       <div>
-        <h2 className="text-2xl font-bold">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Overview of your facility's activity and pending tasks</p>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-2">Overview of your facility's activity and pending tasks</p>
       </div>
 
       {loadError && (
@@ -88,52 +90,49 @@ export default function FacilityDashboard() {
         </div>
       )}
 
-      {/* Key Metrics */}
+      {/* Key Metrics -- same recipe as the admin dashboard's DashboardCard
+          (KalingApp/components/admin/dashboard-card.tsx): a uniform
+          border-border card that highlights on hover, a padding-based icon
+          box instead of a fixed square, and a text-3xl value. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card size="sm" className="border-light-pink bg-white">
-          <CardHeader className="pb-0">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Requests</CardTitle>
-              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10">
-                <AlertCircle className="h-6 w-6 text-primary" />
-              </div>
+        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
+              <p className="text-3xl font-bold text-foreground mt-2">{isLoading ? '—' : pendingRequests.length}</p>
+              <p className="text-xs text-muted-foreground mt-2">Awaiting confirmation</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-black">{isLoading ? '—' : pendingRequests.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting confirmation</p>
-          </CardContent>
-        </Card>
+            <div className="p-3 rounded-xl bg-light-pink text-primary">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
 
-        <Card size="sm" className="border-accent bg-white">
-          <CardHeader className="pb-0">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Confirmed This Week</CardTitle>
-              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-accent/10">
-                <CheckCircle className="h-6 w-6 text-accent" />
-              </div>
+        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Confirmed This Week</p>
+              <p className="text-3xl font-bold text-foreground mt-2">{isLoading ? '—' : confirmedThisWeek.length}</p>
+              <p className="text-xs text-muted-foreground mt-2">Submitted in the last 7 days</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-black">{isLoading ? '—' : confirmedThisWeek.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Submitted in the last 7 days</p>
-          </CardContent>
-        </Card>
+            <div className="p-3 rounded-xl bg-[#FDF6E2] text-accent">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
 
-        <Card size="sm" className="border-light-pink bg-white">
-          <CardHeader className="pb-0">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Action Required</CardTitle>
-              <div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
+        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Action Required</p>
+              <p className="text-3xl font-bold text-foreground mt-2">{isLoading ? '—' : overduePending.length}</p>
+              <p className="text-xs text-muted-foreground mt-2">Pending past their preferred date</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-black">{isLoading ? '—' : overduePending.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Pending past their preferred date</p>
-          </CardContent>
-        </Card>
+            <div className="p-3 rounded-xl bg-light-pink text-primary">
+              <Clock className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
