@@ -58,21 +58,6 @@ const DECLINE_REASONS = ['No Available Doctor', 'Outdated Serological Test', 'Ot
 // offering the option. So notes become mandatory the moment it is selected.
 const OTHER_REASON = 'Others'
 
-// The donor screening phases, as named by the backend's DONOR_STAGES. Matched
-// against request.stages[] by NAME rather than by stage index on purpose: the
-// recipient pathway has a different, shorter stage list, so an index-based
-// check would drag a recipient's "Booking Confirmation" into screening. If the
-// backend ever renames a stage this tab would silently show nothing, which is
-// the failure mode to watch for -- the names are the contract here.
-const SCREENING_STAGES = ['Counseling and Testing', 'Breastmilk Analysis']
-
-// True when this request is sitting in a screening phase right now: the
-// facility has live work in progress on it, rather than just a booking.
-function isInScreening(request: MilkBankRequest): boolean {
-  if (request.current_sub_status !== 'scheduled') return false
-  return SCREENING_STAGES.includes(request.stages[request.current_stage_index])
-}
-
 const STATUS_LABELS = {
   pending: 'Pending',
   awaiting_attendance: 'Awaiting Attendance',
@@ -169,12 +154,6 @@ export default function BookingRequests() {
   const [declineNotes, setDeclineNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [advancingId, setAdvancingId] = useState<number | null>(null)
-
-  const [completeRequest, setCompleteRequest] = useState<MilkBankRequest | null>(null)
-  const [completeAmountMl, setCompleteAmountMl] = useState('')
-  const [completeError, setCompleteError] = useState<string | null>(null)
-  const [isCompleting, setIsCompleting] = useState(false)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -201,19 +180,21 @@ export default function BookingRequests() {
     r.owner_email.toLowerCase().includes(query) ||
     r.allocated_facility_name.toLowerCase().includes(query)
 
+  // Three buckets, and every request is in exactly one of them: this page
+  // answers "was this booking approved?" and nothing else.
+  //
+  // It used to carry a fourth "Screening" tab, which was a view over the
+  // confirmed set rather than a bucket of its own -- the work now lives in
+  // the Donor Process and Recipient Process queues, where each phase gets a
+  // screen that can actually act on it. Confirmed therefore lists everything
+  // that was approved, wherever it has since reached, so this stays a
+  // complete record of the decision rather than a partial one.
   const searchedRequests = requests.filter(matchesSearch)
   const pendingRequests = searchedRequests.filter((r) => r.current_sub_status === 'pending')
   const declinedRequests = searchedRequests.filter((r) => ['declined', 'expired'].includes(r.current_sub_status))
   const confirmedRequests = searchedRequests.filter(
     (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
   )
-  // Screening is a VIEW over the confirmed set, not a separate bucket -- a
-  // request in "Breastmilk Analysis" is still `scheduled`, and must not turn up
-  // in two tabs at once. So it is derived here and excluded from the Confirmed
-  // list below, which keeps the counts on the two tabs mutually exclusive.
-  const screeningRequests = confirmedRequests.filter(isInScreening)
-  const confirmedOutsideScreening = confirmedRequests.filter((r) => !isInScreening(r))
-  const screeningByPhase = groupByPhase(screeningRequests)
 
   const handleConfirm = async (request: MilkBankRequest) => {
     setActionError(null)
@@ -227,24 +208,6 @@ export default function BookingRequests() {
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not accept this request')
-    }
-  }
-
-  const handleAdvanceStage = async (request: MilkBankRequest) => {
-    setActionError(null)
-    setAdvancingId(request.id)
-    try {
-      const res = await apiFetch(`/milkbank/requests/${request.id}/advance-stage/`, {
-        method: 'POST',
-      })
-      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not advance this request')
-      const updated = await res.json()
-      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-      setDetailsRequest((prev) => (prev && prev.id === updated.id ? updated : prev))
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not advance this request')
-    } finally {
-      setAdvancingId(null)
     }
   }
 
@@ -279,41 +242,6 @@ export default function BookingRequests() {
       setActionError(err instanceof Error ? err.message : 'Could not decline this request')
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const handleOpenComplete = (request: MilkBankRequest) => {
-    setCompleteRequest(request)
-    setCompleteAmountMl('')
-    setCompleteError(null)
-  }
-
-  const handleSubmitComplete = async () => {
-    if (!completeRequest) return
-    // Whole millilitres only -- the backend stores stock as an integer
-    // count of mL and rejects a fraction, so catch it here rather than
-    // surfacing a serializer error.
-    const amount = Number(completeAmountMl)
-    if (!Number.isInteger(amount) || amount <= 0) {
-      setCompleteError('Enter how many millilitres (a whole number) before confirming.')
-      return
-    }
-    setIsCompleting(true)
-    setCompleteError(null)
-    try {
-      const res = await apiFetch(`/milkbank/requests/${completeRequest.id}/confirm-completion/`, {
-        method: 'POST',
-        body: JSON.stringify({ amount_ml: amount }),
-      })
-      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not mark this request as completed')
-      const updated = await res.json()
-      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-      setDetailsRequest((prev) => (prev && prev.id === updated.id ? updated : prev))
-      setCompleteRequest(null)
-    } catch (err) {
-      setCompleteError(err instanceof Error ? err.message : 'Could not mark this request as completed')
-    } finally {
-      setIsCompleting(false)
     }
   }
 
@@ -443,37 +371,19 @@ export default function BookingRequests() {
             )}
           </div>
 
+          {/* Read-only on purpose. Moving a booking between phases, and
+              recording the millilitres at the end of one, both belong to the
+              Donor Process / Recipient Process queues now -- each of those
+              screens shows one phase at a time, so staff act on a mother
+              from the screen that describes what is actually happening to
+              her. Keeping a second set of the same buttons here would let
+              the same booking be advanced from two places with different
+              surrounding context, which is how a stage gets ticked off
+              before it has been done. */}
           {variant === 'confirmed' && (
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center gap-2 text-accent text-sm font-medium">
-                <Check className="h-4 w-4" />
-                {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
-              </div>
-              {request.current_sub_status === 'scheduled' && request.current_stage_index < request.stages.length - 1 && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleAdvanceStage(request)}
-                  disabled={advancingId === request.id}
-                >
-                  {advancingId === request.id ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-2" />
-                  )}
-                  Mark {request.stages[request.current_stage_index + 1]} as done
-                </Button>
-              )}
-              {request.current_sub_status === 'scheduled' &&
-                request.current_stage_index >= request.stages.length - 1 && (
-                  <Button
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
-                    onClick={() => handleOpenComplete(request)}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Confirm Completion
-                  </Button>
-                )}
+            <div className="flex items-center gap-2 pt-2 text-accent text-sm font-medium">
+              <Check className="h-4 w-4" />
+              {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
             </div>
           )}
         </CardContent>
@@ -627,32 +537,10 @@ export default function BookingRequests() {
             )}
           </div>
 
+          {/* No phase actions here either -- see the comment on the
+              confirmed card above. This dialog is for reading a booking,
+              including the donor questionnaire and serology photo. */}
           <DialogFooter>
-            {detailsRequest?.current_sub_status === 'scheduled' &&
-              detailsRequest.current_stage_index < detailsRequest.stages.length - 1 && (
-                <Button
-                  variant="outline"
-                  onClick={() => detailsRequest && handleAdvanceStage(detailsRequest)}
-                  disabled={advancingId === detailsRequest?.id}
-                >
-                  {advancingId === detailsRequest?.id ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-2" />
-                  )}
-                  Mark {detailsRequest.stages[detailsRequest.current_stage_index + 1]} as done
-                </Button>
-              )}
-            {detailsRequest?.current_sub_status === 'scheduled' &&
-              detailsRequest.current_stage_index >= detailsRequest.stages.length - 1 && (
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-white"
-                  onClick={() => detailsRequest && handleOpenComplete(detailsRequest)}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm Completion
-                </Button>
-              )}
             <Button variant="outline" onClick={() => setDetailsRequest(null)}>
               Close
             </Button>
@@ -732,54 +620,6 @@ export default function BookingRequests() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Completion Dialog */}
-      <Dialog open={!!completeRequest} onOpenChange={(open) => !open && setCompleteRequest(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Completion</DialogTitle>
-            <DialogDescription>
-              {completeRequest?.request_type === 'DONOR'
-                ? 'Record how many millilitres this mother donated. This adds to the facility’s milk stock.'
-                : 'Record how many millilitres were dispensed to this mother. This subtracts from the facility’s milk stock.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {completeRequest?.request_type === 'DONOR'
-                  ? 'Millilitres produced (mL)'
-                  : 'Millilitres dispensed (mL)'}{' '}
-                <span className="text-destructive">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={completeAmountMl}
-                onChange={(e) => setCompleteAmountMl(e.target.value)}
-                placeholder="e.g. 120"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-            {completeError && <p className="text-sm text-destructive">{completeError}</p>}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCompleteRequest(null)} disabled={isCompleting}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white"
-              onClick={handleSubmitComplete}
-              disabled={isCompleting}
-            >
-              {isCompleting ? 'Confirming...' : 'Confirm Completion'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {isLoading && (
         <Card>
           <CardContent className="pt-6 text-center text-muted-foreground flex items-center justify-center gap-2">
@@ -803,43 +643,11 @@ export default function BookingRequests() {
 
       {!isLoading && !loadError && (
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pending">Pending ({pendingRequests.length})</TabsTrigger>
-            <TabsTrigger value="screening">
-              Screening{' '}
-              <span className="ml-1 rounded-full bg-[#E8DEF8] px-1.5 py-0.5 text-[10px] font-semibold text-[#4A378B]">
-                {screeningRequests.length}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="confirmed">Confirmed ({confirmedOutsideScreening.length})</TabsTrigger>
-            <TabsTrigger value="declined">Declined ({declinedRequests.length})</TabsTrigger>
+            <TabsTrigger value="confirmed">Confirmed ({confirmedRequests.length})</TabsTrigger>
+            <TabsTrigger value="denied">Denied ({declinedRequests.length})</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="screening" className="space-y-6 mt-6">
-            {screeningByPhase.length > 0 ? (
-              screeningByPhase.map(([phase, phaseRequests]) => (
-                <div key={phase} className="space-y-4">
-                  <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#4A378B]">
-                    <span className="inline-block h-2 w-2 rounded-full bg-[#7C4DBE]" />
-                    {phase} ({phaseRequests.length})
-                  </h3>
-                  <div className="space-y-4">
-                    {phaseRequests.map((request) => (
-                      <RequestCard key={request.id} request={request} variant="confirmed" />
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  {query
-                    ? 'No screening requests match your search'
-                    : 'No requests are in screening right now'}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
 
           <TabsContent value="pending" className="space-y-4 mt-6">
             {pendingRequests.length > 0 ? (
@@ -856,8 +664,8 @@ export default function BookingRequests() {
           </TabsContent>
 
           <TabsContent value="confirmed" className="space-y-6 mt-6">
-            {confirmedOutsideScreening.length > 0 ? (
-              groupByPhase(confirmedOutsideScreening).map(([phase, phaseRequests]) => (
+            {confirmedRequests.length > 0 ? (
+              groupByPhase(confirmedRequests).map(([phase, phaseRequests]) => (
                 <div key={phase} className="space-y-4">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {phase} ({phaseRequests.length})
@@ -878,7 +686,7 @@ export default function BookingRequests() {
             )}
           </TabsContent>
 
-          <TabsContent value="declined" className="space-y-4 mt-6">
+          <TabsContent value="denied" className="space-y-4 mt-6">
             {declinedRequests.length > 0 ? (
               declinedRequests.map((request) => (
                 <RequestCard key={request.id} request={request} variant="declined" />
@@ -886,7 +694,7 @@ export default function BookingRequests() {
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center text-muted-foreground">
-                  {query ? 'No declined requests match your search' : 'No declined requests'}
+                  {query ? 'No denied requests match your search' : 'No denied requests'}
                 </CardContent>
               </Card>
             )}
