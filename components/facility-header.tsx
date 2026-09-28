@@ -20,7 +20,8 @@ export function FacilityHeader() {
   }
 
   return (
-    <header className="bg-white border-b border-border px-8 py-4 flex items-center justify-between">
+    // h-20, matching the sidebar logo box's own fixed h-20 (see facility-sidebar.tsx).
+    <header className="bg-white border-b border-border px-8 h-20 flex items-center justify-between">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Facility Management</h2>
         <p className="text-sm text-muted-foreground">Welcome back, {user?.username || 'Facility Mgmt.'}</p>

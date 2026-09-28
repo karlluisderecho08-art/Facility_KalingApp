@@ -28,8 +28,12 @@ export function FacilitySidebar() {
 
   return (
     <aside className="w-64 bg-white border-r border-border overflow-y-auto">
-      {/* Logo Section -- same box, spacing and type scale as the admin dashboard's sidebar */}
-      <div className="p-5 border-b border-border">
+      {/* Logo Section -- h-20, matching admin's sidebar exactly (see that
+          file's comment): a fixed height here, not content-driven padding,
+          so this box lands at the same height as the header bar's own h-20
+          and their bottom borders form one continuous line instead of a
+          visible step at the sidebar/header boundary. */}
+      <div className="h-20 px-5 border-b border-border flex items-center">
         <div className="flex items-center gap-3">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-logo-kZ5dYwW0EczGiFN8WRQf0BUCupImzB.png"
