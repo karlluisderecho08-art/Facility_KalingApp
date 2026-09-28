@@ -38,9 +38,9 @@ export function FacilityHeader() {
         </button>
 
         {showDropdown && (
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
+          <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
             <div className="px-4 py-2 border-b border-border">
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <p className="text-sm text-muted-foreground break-all">{user?.email}</p>
             </div>
             <button
               onClick={handleLogout}
