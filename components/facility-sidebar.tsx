@@ -7,6 +7,7 @@ import {
   Calendar,
   Droplets,
   HeartHandshake,
+  Receipt,
   Settings,
   Users,
 } from 'lucide-react'
@@ -63,6 +64,13 @@ const navItems: NavSection[] = [
       { label: 'Results', href: '/admin/recipient/results' },
     ],
   },
+  // Where a booking goes once it leaves both process queues for good. A
+  // completed request's current_stage_index stays parked on "Results"
+  // forever (nothing moves it further), so lib/booking.ts's isOnStage()
+  // excludes 'completed' from every queue above and isFinished() is what
+  // routes it here instead -- otherwise it would sit in Results showing a
+  // "Record amount & complete" button with nothing left to record.
+  { label: 'Finished Transactions', href: '/admin/transactions', icon: Receipt },
   { label: 'User Management', href: '/admin/users', icon: Users },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]

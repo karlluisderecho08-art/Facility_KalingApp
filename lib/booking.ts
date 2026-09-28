@@ -27,6 +27,11 @@ export interface MilkBankRequest {
   representative_name: string
   representative_birthday: string | null
   representative_contact_number: string
+  // Both null until this booking reaches 'completed'. amount_ml is the
+  // millilitres staff recorded on the Results stage -- donated for a
+  // DONOR, dispensed for a RECIPIENT.
+  amount_ml: number | null
+  completed_at: string | null
 }
 
 export type BookingStatus =
@@ -98,11 +103,19 @@ export function formatSubmitted(submittedAt: string) {
  * True when this request is the one a given process queue is responsible
  * for right now: the right pathway, sitting on the right stage.
  *
- * Deliberately does NOT filter on current_sub_status. A queue's stage is
- * what decides whether the work belongs there; the status decides which
- * ACTION is offered on the card (see ProcessQueue). Folding the status in
- * here would hide, say, a recipient who is awaiting attendance from the
- * Booking Confirmation queue whose entire job is to show exactly her.
+ * Mostly does NOT filter on current_sub_status. A queue's stage is what
+ * decides whether the work belongs there; the status decides which ACTION
+ * is offered on the card (see ProcessQueue). Folding the status in here
+ * would hide, say, a recipient who is awaiting attendance from the Booking
+ * Confirmation queue whose entire job is to show exactly her.
+ *
+ * 'completed' is the one exception, and has to be excluded here rather
+ * than left to ProcessQueue: current_stage_index never moves past the
+ * request's last stage, so a completed request stays parked on "Results"
+ * forever. Without this it would keep matching the Results queue after
+ * being completed and re-show "Record amount & complete" on a transaction
+ * that is already done. Finished requests live in Finished Transactions
+ * (isFinished below) instead.
  */
 export function isOnStage(
   request: MilkBankRequest,
@@ -110,8 +123,26 @@ export function isOnStage(
   stage: string
 ): boolean {
   if (request.request_type !== requestType) return false
-  if (request.current_sub_status === 'declined' || request.current_sub_status === 'expired') {
+  if (['declined', 'expired', 'completed'].includes(request.current_sub_status)) {
     return false
   }
   return request.stages[request.current_stage_index] === stage
+}
+
+/** True for a request Finished Transactions is responsible for listing. */
+export function isFinished(request: MilkBankRequest): boolean {
+  return request.current_sub_status === 'completed'
+}
+
+export function formatAmount(amountMl: number | null): string {
+  return amountMl === null ? '—' : `${amountMl.toLocaleString()} mL`
+}
+
+export function formatCompletedAt(completedAt: string | null): string {
+  if (!completedAt) return '—'
+  return new Date(completedAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
