@@ -15,6 +15,7 @@ import {
   Camera,
   UserRound,
   CalendarPlus,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,6 +55,11 @@ interface MilkBankRequest {
   representative_name: string
   representative_birthday: string | null
   representative_contact_number: string
+  neonate_name: string
+  clinic_info: string
+  has_prescription_proof: boolean
+  has_cooler: boolean
+  has_medical_abstract: boolean
 }
 
 interface DonorQuestionnaire {
@@ -143,7 +149,8 @@ function formatDateOnly(date: string) {
 }
 
 // One heading style for every section of the View Details dialog (Booking,
-// Pickup Representative, Donor Questionnaire, Serology Photo) -- same icon
+// Requirements, Pickup Representative, Donor Questionnaire, Serology
+// Photo) -- same icon
 // chip the dashboard's own KPI cards use (bg-light-pink/text-primary, see
 // app/admin/page.tsx), so the dialog reads as part of the same app rather
 // than a plain data dump bolted onto it.
@@ -604,6 +611,53 @@ export default function BookingRequests() {
                 )}
               </div>
             </div>
+
+            {detailsRequest?.request_type === 'RECIPIENT' && (
+              <>
+                <Separator />
+                <div className="space-y-2.5">
+                  <SectionHeading icon={ListChecks}>Requirements</SectionHeading>
+                  <div className="space-y-1.5 pl-1">
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">Baby&apos;s name</span>
+                      <span className="font-medium text-right shrink-0">
+                        {detailsRequest.neonate_name || '—'}
+                      </span>
+                    </div>
+                    {detailsRequest.clinic_info && (
+                      <div className="flex items-start justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">Clinic / doctor notes</span>
+                        <span className="font-medium text-right">{detailsRequest.clinic_info}</span>
+                      </div>
+                    )}
+                    {(
+                      [
+                        ['Prescription proof', detailsRequest.has_prescription_proof],
+                        ['Has a cooler ready', detailsRequest.has_cooler],
+                        ['Medical abstract', detailsRequest.has_medical_abstract],
+                      ] as [string, boolean][]
+                    ).map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-start justify-between gap-4 text-sm rounded-lg bg-muted/60 px-2.5 py-1.5"
+                      >
+                        <span className="text-muted-foreground">{label}</span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            value
+                              ? 'border-accent/40 text-accent bg-accent/10 shrink-0'
+                              : 'border-border text-muted-foreground shrink-0'
+                          }
+                        >
+                          {value ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {detailsRequest?.request_type === 'RECIPIENT' && detailsRequest?.needs_representative && (
               <>
