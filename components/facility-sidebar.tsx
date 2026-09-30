@@ -27,10 +27,31 @@ import {
 //   Recipient  Booking Request -> Status (staff review) -> Booking
 //              Confirmation (she confirms) -> Results
 //
-// A donor has no "Booking Confirmation" entry here on purpose: between
-// approval and Counseling and Testing she is waiting on nobody but herself,
-// so she stays in Booking Request > Confirmed until she confirms attendance,
-// at which point she appears under Counseling and Testing.
+// Neither pathway gets a queue page for the "waiting on her, not on staff"
+// phase between approval and the next staff-driven step -- there is
+// nothing for a staff member to do there, so a page for it would only ever
+// show a list with no action on it. That phase is backend stage "Booking
+// Confirmation" for BOTH pathways (see lib/booking.ts's DONOR_STAGES /
+// RECIPIENT_STAGES), but only ONE nav entry below is named after it:
+//
+//   Donor      has no entry at all for it -- she stays visible in Booking
+//              Request > Confirmed until she confirms, then appears under
+//              Counseling and Testing.
+//
+//   Recipient  reuses this label on the *previous* stage's page instead.
+//              The child below labeled "Booking Confirmation" points at
+//              /admin/recipient/status and still filters on
+//              RECIPIENT_STAGES.status (stages[current_stage_index] ===
+//              "Status") -- it is staff's document-review queue, the one
+//              actionable step before she reaches the real "Booking
+//              Confirmation" backend stage. There used to be a second,
+//              read-only child pointed at RECIPIENT_STAGES.bookingConfirmation
+//              (app/admin/recipient/confirmation) that showed staff who was
+//              waiting on her -- removed on purpose, for the same "nothing
+//              to do here" reason the donor side never had one. Don't
+//              "fix" this label back to "Status" without re-adding that
+//              page; the mismatch between what this nav item says and what
+//              stage it actually filters on is deliberate, not a bug.
 interface NavLeaf {
   label: string
   href: string
@@ -59,8 +80,7 @@ const navItems: NavSection[] = [
     label: 'Recipient Process',
     icon: HeartHandshake,
     children: [
-      { label: 'Status', href: '/admin/recipient/status' },
-      { label: 'Booking Confirmation', href: '/admin/recipient/confirmation' },
+      { label: 'Booking Confirmation', href: '/admin/recipient/status' },
       { label: 'Results', href: '/admin/recipient/results' },
     ],
   },

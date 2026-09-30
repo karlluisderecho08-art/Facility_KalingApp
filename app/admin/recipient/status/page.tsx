@@ -7,13 +7,18 @@ import { RECIPIENT_STAGES } from '@/lib/booking'
 // anything here -- staff are, which is why she sits as "Scheduled" rather
 // than "Awaiting Attendance" (that status would start an 8-business-hour
 // clock against a mother with nothing left to do). Approving moves her to
-// Booking Confirmation, which IS the wait on her.
+// the backend's "Booking Confirmation" stage, which IS the wait on her --
+// see lib/booking.ts's RECIPIENT_STAGES and facility-sidebar.tsx's comment
+// on why this page is labeled "Booking Confirmation" in the sidebar even
+// though it still filters on the "Status" stage: this is the actionable
+// step staff take to GET her to that stage, and there is deliberately no
+// separate page for the read-only wait once she's there.
 export default function RecipientStatusPage() {
   return (
     <ProcessQueue
       requestType="RECIPIENT"
       stage={RECIPIENT_STAGES.status}
-      title="Status — Document Review"
+      title="Booking Confirmation — Document Review"
       description="Recipients whose submitted requirements need checking. Approve to ask each mother to confirm her attendance."
       action="advance"
       advanceLabel="Approve & ask her to confirm attendance"
