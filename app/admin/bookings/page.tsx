@@ -2,11 +2,25 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, X, Mail, Building2, CalendarClock, Eye, Loader2, Search } from 'lucide-react'
+import {
+  Check,
+  X,
+  Mail,
+  Building2,
+  CalendarClock,
+  Eye,
+  Loader2,
+  Search,
+  ClipboardList,
+  Camera,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -88,6 +102,22 @@ function formatDateTime(preferredDate: string | undefined, preferredTime: string
 function formatDateOnly(date: string) {
   const d = new Date(`${date}T00:00:00`)
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// One heading style for every section of the View Details dialog (Booking,
+// Pickup Representative, Donor Questionnaire, Serology Photo) -- same icon
+// chip the dashboard's own KPI cards use (bg-light-pink/text-primary, see
+// app/admin/page.tsx), so the dialog reads as part of the same app rather
+// than a plain data dump bolted onto it.
+function SectionHeading({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="p-1.5 rounded-lg bg-light-pink text-primary">
+        <Icon className="h-3.5 w-3.5" />
+      </div>
+      <h3 className="text-sm font-semibold text-foreground">{children}</h3>
+    </div>
+  )
 }
 
 // Where a confirmed request sits in its journey, for sorting/grouping the
@@ -438,102 +468,144 @@ export default function BookingRequests() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Booking</h3>
-              <p className="text-sm text-muted-foreground">Facility: {detailsRequest?.allocated_facility_name}</p>
-              <p className="text-sm text-muted-foreground">
-                Status:{' '}
-                {(detailsRequest && STATUS_LABELS[detailsRequest.current_sub_status]) ||
-                  detailsRequest?.current_sub_status}
-              </p>
-              {detailsRequest?.staff_message && (
-                <p className="text-sm text-muted-foreground">Staff note: {detailsRequest.staff_message}</p>
-              )}
-            </div>
-
-            {detailsRequest?.request_type === 'RECIPIENT' && detailsRequest?.needs_representative && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Pickup Representative</h3>
+          <div className="space-y-5 py-2">
+            {/* Booking */}
+            <div className="space-y-2.5">
+              <SectionHeading icon={Building2}>Booking</SectionHeading>
+              <div className="space-y-1.5 pl-1">
                 <div className="flex items-start justify-between gap-4 text-sm">
-                  <span className="text-muted-foreground">Name</span>
-                  <span className="font-medium shrink-0">{detailsRequest.representative_name || '—'}</span>
+                  <span className="text-muted-foreground">Facility</span>
+                  <span className="font-medium text-right shrink-0">{detailsRequest?.allocated_facility_name}</span>
                 </div>
                 <div className="flex items-start justify-between gap-4 text-sm">
-                  <span className="text-muted-foreground">Birthday</span>
-                  <span className="font-medium shrink-0">
-                    {detailsRequest.representative_birthday
-                      ? formatDateOnly(detailsRequest.representative_birthday)
-                      : '—'}
-                  </span>
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge variant="outline" className="border-primary/30 text-primary bg-light-pink/50 shrink-0">
+                    {(detailsRequest && STATUS_LABELS[detailsRequest.current_sub_status]) ||
+                      detailsRequest?.current_sub_status}
+                  </Badge>
                 </div>
-                <div className="flex items-start justify-between gap-4 text-sm">
-                  <span className="text-muted-foreground">Contact number</span>
-                  <span className="font-medium shrink-0">
-                    {detailsRequest.representative_contact_number || '—'}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {detailsRequest?.request_type === 'DONOR' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Donor Questionnaire</h3>
-                {questionnaireState === 'loading' && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading questionnaire...
-                  </p>
-                )}
-                {questionnaireState === 'none' && (
-                  <p className="text-sm text-muted-foreground">No questionnaire submitted yet.</p>
-                )}
-                {questionnaireState === 'error' && (
-                  <p className="text-sm text-destructive">Could not load questionnaire.</p>
-                )}
-                {questionnaireState === 'loaded' && questionnaire && (
-                  <div className="space-y-2">
-                    {DONOR_QUESTIONNAIRE_FIELDS.map(([field, label]) => (
-                      <div key={field} className="flex items-start justify-between gap-4 text-sm">
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className="font-medium shrink-0">
-                          {typeof questionnaire[field] === 'boolean'
-                            ? questionnaire[field]
-                              ? 'Yes'
-                              : 'No'
-                            : String(questionnaire[field] ?? '—')}
-                        </span>
-                      </div>
-                    ))}
-                    {questionnaire.medication_details && (
-                      <div className="flex items-start justify-between gap-4 text-sm">
-                        <span className="text-muted-foreground">Medications / supplements</span>
-                        <span className="font-medium shrink-0">{String(questionnaire.medication_details)}</span>
-                      </div>
-                    )}
-                    <div className="pt-2 space-y-2">
-                      <p className="text-sm">
-                        Serology photo: {questionnaire.photo_attached ? 'Attached' : 'Not attached'}
-                      </p>
-                      {questionnaire.photo_attached && photoState === 'loading' && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Loading photo...
-                        </p>
-                      )}
-                      {questionnaire.photo_attached && photoState === 'error' && (
-                        <p className="text-sm text-destructive">Could not load serology photo.</p>
-                      )}
-                      {questionnaire.photo_attached && photoState === 'loaded' && photoUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={photoUrl}
-                          alt="Serology test photo"
-                          className="max-w-full rounded-lg border border-border"
-                        />
-                      )}
-                    </div>
+                {detailsRequest?.staff_message && (
+                  <div className="flex items-start justify-between gap-4 text-sm">
+                    <span className="text-muted-foreground">Staff note</span>
+                    <span className="font-medium text-right">{detailsRequest.staff_message}</span>
                   </div>
                 )}
               </div>
+            </div>
+
+            {detailsRequest?.request_type === 'RECIPIENT' && detailsRequest?.needs_representative && (
+              <>
+                <Separator />
+                <div className="space-y-2.5">
+                  <SectionHeading icon={UserRound}>Pickup Representative</SectionHeading>
+                  <div className="space-y-1.5 pl-1">
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">Name</span>
+                      <span className="font-medium shrink-0">{detailsRequest.representative_name || '—'}</span>
+                    </div>
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">Birthday</span>
+                      <span className="font-medium shrink-0">
+                        {detailsRequest.representative_birthday
+                          ? formatDateOnly(detailsRequest.representative_birthday)
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-start justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">Contact number</span>
+                      <span className="font-medium shrink-0">
+                        {detailsRequest.representative_contact_number || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {detailsRequest?.request_type === 'DONOR' && (
+              <>
+                <Separator />
+                <div className="space-y-2.5">
+                  <SectionHeading icon={ClipboardList}>Donor Questionnaire</SectionHeading>
+                  {questionnaireState === 'loading' && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 pl-1">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading questionnaire...
+                    </p>
+                  )}
+                  {questionnaireState === 'none' && (
+                    <p className="text-sm text-muted-foreground pl-1">No questionnaire submitted yet.</p>
+                  )}
+                  {questionnaireState === 'error' && (
+                    <p className="text-sm text-destructive pl-1">Could not load questionnaire.</p>
+                  )}
+                  {questionnaireState === 'loaded' && questionnaire && (
+                    <div className="space-y-1.5 pl-1">
+                      {DONOR_QUESTIONNAIRE_FIELDS.map(([field, label]) => {
+                        const value = questionnaire[field]
+                        const isBoolean = typeof value === 'boolean'
+                        return (
+                          <div
+                            key={field}
+                            className="flex items-start justify-between gap-4 text-sm rounded-lg bg-muted/60 px-2.5 py-1.5"
+                          >
+                            <span className="text-muted-foreground">{label}</span>
+                            {isBoolean ? (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  value
+                                    ? 'border-accent/40 text-accent bg-accent/10 shrink-0'
+                                    : 'border-border text-muted-foreground shrink-0'
+                                }
+                              >
+                                {value ? 'Yes' : 'No'}
+                              </Badge>
+                            ) : (
+                              <span className="font-medium shrink-0">{String(value ?? '—')}</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {questionnaire.medication_details && (
+                        <div className="flex items-start justify-between gap-4 text-sm rounded-lg bg-muted/60 px-2.5 py-1.5">
+                          <span className="text-muted-foreground">Medications / supplements</span>
+                          <span className="font-medium shrink-0">{String(questionnaire.medication_details)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {questionnaireState === 'loaded' && questionnaire && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2.5">
+                      <SectionHeading icon={Camera}>Serology Photo</SectionHeading>
+                      <div className="space-y-2 pl-1">
+                        <p className="text-sm text-muted-foreground">
+                          {questionnaire.photo_attached ? 'Attached' : 'Not attached'}
+                        </p>
+                        {questionnaire.photo_attached && photoState === 'loading' && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Loading photo...
+                          </p>
+                        )}
+                        {questionnaire.photo_attached && photoState === 'error' && (
+                          <p className="text-sm text-destructive">Could not load serology photo.</p>
+                        )}
+                        {questionnaire.photo_attached && photoState === 'loaded' && photoUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={photoUrl}
+                            alt="Serology test photo"
+                            className="max-w-full rounded-xl border border-border shadow-sm"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
 
