@@ -14,6 +14,7 @@ import {
   ClipboardList,
   Camera,
   UserRound,
+  CalendarPlus,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -63,7 +64,44 @@ interface DonorQuestionnaire {
 
 type QuestionnaireState = 'idle' | 'loading' | 'loaded' | 'none' | 'error'
 
-const DECLINE_REASONS = ['No Available Doctor', 'Outdated Serological Test', 'Others']
+// "No Available Doctor" is deliberately NOT here any more. It was never
+// really a reason to refuse a mother -- it is a reason to offer her a
+// different day -- but as a decline it ended the request outright, and
+// the only way back was submitting the whole thing again, questionnaire
+// and serology photo included, to change a single date. It is now the
+// "Propose New Date" button on each pending card instead, which sends a
+// counter-offer she can accept in the app (see handleSubmitCounterOffer).
+// What is left here is what a facility genuinely cannot work around.
+const DECLINE_REASONS = ['Outdated Serological Test', 'Others']
+
+// The mother's own scheduler offers exactly these, in this order
+// (AllScreens.kt's timeSlots) -- staff must not be able to propose a slot
+// her app would never have let her pick in the first place.
+const TIME_SLOTS = [
+  '8:00 AM', '9:00 AM', '10:00 AM',
+  '11:00 AM', '12:00 PM', '1:00 PM',
+  '2:00 PM', '3:00 PM', '4:00 PM',
+  '5:00 PM',
+]
+
+// What the mother is told when a date is proposed. She reads this in the
+// app's "Message from Facility Team" card, directly above the Accept /
+// Choose New Time buttons -- without it the date simply moves with no
+// explanation attached.
+const NO_DOCTOR_MESSAGE =
+  'No available doctor on your requested date — we have proposed a date when one is available.'
+
+// Today in the browser's own timezone, as the yyyy-mm-dd that <input
+// type="date"> wants for `min`. toISOString() would be wrong here: it
+// converts to UTC first, so for anyone east of Greenwich (Manila is
+// UTC+8) it still reads as yesterday for the first eight hours of the
+// day, and would offer staff a date the backend counts as past.
+function todayForDateInput(): string {
+  const now = new Date()
+  const month = `${now.getMonth() + 1}`.padStart(2, '0')
+  const day = `${now.getDate()}`.padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
 
 // "Others" is the only reason that says nothing on its own. The reason and the
 // notes are concatenated into the single `staff_message` the mother reads (see
@@ -185,6 +223,11 @@ export default function BookingRequests() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const [counterOfferRequest, setCounterOfferRequest] = useState<MilkBankRequest | null>(null)
+  const [counterOfferDate, setCounterOfferDate] = useState('')
+  const [counterOfferTime, setCounterOfferTime] = useState('')
+  const [counterOfferNotes, setCounterOfferNotes] = useState('')
+
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
     setLoadError(null)
@@ -270,6 +313,50 @@ export default function BookingRequests() {
       setDeclineRequest(null)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not decline this request')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleOpenCounterOffer = (request: MilkBankRequest) => {
+    setCounterOfferRequest(request)
+    setCounterOfferDate('')
+    setCounterOfferTime('')
+    setCounterOfferNotes('')
+    setActionError(null)
+  }
+
+  /**
+   * Offers the mother a different appointment instead of refusing her.
+   *
+   * The request stays alive the whole way through: it moves to
+   * "Counter Offer Proposed" (still holding her slot at this facility,
+   * with no countdown running against her), and in the app she gets
+   * Accept or Choose New Time. Choosing a new time puts her back in this
+   * desk's Pending tab with her new slot and everything she already
+   * submitted still attached -- no re-application either way.
+   */
+  const handleSubmitCounterOffer = async () => {
+    if (!counterOfferRequest || !counterOfferDate || !counterOfferTime) return
+    setIsSubmitting(true)
+    setActionError(null)
+    const notes = counterOfferNotes.trim()
+    const staff_message = notes ? `${NO_DOCTOR_MESSAGE} ${notes}` : NO_DOCTOR_MESSAGE
+    try {
+      const res = await apiFetch(`/milkbank/requests/${counterOfferRequest.id}/propose-counter-offer/`, {
+        method: 'POST',
+        body: JSON.stringify({
+          counter_offer_date: counterOfferDate,
+          counter_offer_time: counterOfferTime,
+          staff_message,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not propose a new date')
+      const updated = await res.json()
+      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setCounterOfferRequest(null)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not propose a new date')
     } finally {
       setIsSubmitting(false)
     }
@@ -379,21 +466,46 @@ export default function BookingRequests() {
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => handleOpenDetails(request)}>
+          {/* flex-wrap + a min width rather than plain flex-1: a pending
+              card carries four actions now, and four equal columns on a
+              narrow screen squeezes each label past the point of being
+              readable. They sit on one row where there is room and wrap
+              onto two where there isn't. */}
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1 min-w-[140px]"
+              onClick={() => handleOpenDetails(request)}
+            >
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
             {variant === 'pending' && (
               <>
                 <Button
-                  className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                  className="flex-1 min-w-[140px] bg-primary hover:bg-primary/90 text-white"
                   onClick={() => handleConfirm(request)}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Confirm
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => handleOpenDecline(request)}>
+                {/* Sits beside Decline, not inside it: no doctor on her
+                    date is a scheduling problem, and answering it with a
+                    refusal made her re-submit an entire application to
+                    move one day. */}
+                <Button
+                  variant="outline"
+                  className="flex-1 min-w-[140px] border-accent text-accent hover:bg-light-pink/30"
+                  onClick={() => handleOpenCounterOffer(request)}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Propose New Date
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 min-w-[140px]"
+                  onClick={() => handleOpenDecline(request)}
+                >
                   <X className="h-4 w-4 mr-2" />
                   Decline
                 </Button>
@@ -687,6 +799,101 @@ export default function BookingRequests() {
               disabled={!declineReason || (declineReason === OTHER_REASON && !declineNotes.trim()) || isSubmitting}
             >
               {isSubmitting ? 'Declining...' : 'Decline Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Propose New Date (counter-offer) Dialog */}
+      <Dialog
+        open={!!counterOfferRequest}
+        onOpenChange={(open) => !open && setCounterOfferRequest(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Propose a New Date</DialogTitle>
+            <DialogDescription>
+              For when no doctor is available on the date{' '}
+              {counterOfferRequest?.owner_name || counterOfferRequest?.owner_email} asked for. Her
+              request stays open and everything she already submitted is kept — she just picks
+              between this date and another time of her own.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">She asked for </span>
+              <span className="font-medium">
+                {formatDateTime(counterOfferRequest?.preferred_date, counterOfferRequest?.preferred_time)}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Date a doctor is available <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="date"
+                value={counterOfferDate}
+                min={todayForDateInput()}
+                onChange={(e) => setCounterOfferDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Time <span className="text-destructive">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {TIME_SLOTS.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setCounterOfferTime(slot)}
+                    className={
+                      counterOfferTime === slot
+                        ? 'rounded-lg border border-primary bg-primary text-white text-sm py-2 font-medium'
+                        : 'rounded-lg border border-border bg-background text-sm py-2 hover:bg-light-pink/30'
+                    }
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Notes <span className="font-normal text-muted-foreground">(Optional)</span>
+              </label>
+              <textarea
+                value={counterOfferNotes}
+                onChange={(e) => setCounterOfferNotes(e.target.value)}
+                placeholder="Anything else she should know — the mother reads this..."
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                She is told a doctor was not available on her date whether or not you add notes.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCounterOfferRequest(null)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 text-white"
+              onClick={handleSubmitCounterOffer}
+              disabled={!counterOfferDate || !counterOfferTime || isSubmitting}
+            >
+              {isSubmitting ? 'Sending...' : 'Send to Mother'}
             </Button>
           </DialogFooter>
         </DialogContent>
