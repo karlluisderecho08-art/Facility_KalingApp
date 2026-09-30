@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Search, MoreHorizontal, Mail, MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import { formatAmount } from '@/lib/booking'
 
 interface StaffUser {
   id: number
@@ -36,7 +37,14 @@ interface StaffUser {
   mom_name: string
   baby_name: string
   tracking_streaks: number
+  // Each a lifetime total across EVERY facility, not just this one --
+  // see accounts.serializers.StaffUserListSerializer's docstring. The
+  // backend never scopes these to "at this facility", so neither should
+  // this page: a mother who donated at PGH and received at St. Luke's
+  // shows both figures here regardless of which facility's dashboard is
+  // asking.
   total_drawn_ml: number
+  total_received_ml: number
   location_consent_given: boolean
   is_active: boolean
   date_joined: string
@@ -131,7 +139,8 @@ export default function UsersPage() {
           <div className="space-y-2 text-sm py-2">
             <div className="flex justify-between"><span className="text-muted-foreground">Baby's name</span><span>{detailsUser?.baby_name || '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Tracking streak</span><span>{detailsUser?.tracking_streaks} days</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Total drawn</span><span>{detailsUser?.total_drawn_ml} mL</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total donated</span><span>{detailsUser ? formatAmount(detailsUser.total_drawn_ml) : '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total received</span><span>{detailsUser ? formatAmount(detailsUser.total_received_ml) : '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Location shared</span><span>{detailsUser?.location_consent_given ? 'Yes' : 'No'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Joined</span><span>{detailsUser ? new Date(detailsUser.date_joined).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span></div>
           </div>
@@ -207,6 +216,8 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Donated</TableHead>
+                    <TableHead className="text-right">Received</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
@@ -224,6 +235,8 @@ export default function UsersPage() {
                             <span className="text-sm">{user.email}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-right text-sm">{formatAmount(user.total_drawn_ml)}</TableCell>
+                        <TableCell className="text-right text-sm">{formatAmount(user.total_received_ml)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -262,7 +275,7 @@ export default function UsersPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No users found
                       </TableCell>
                     </TableRow>
