@@ -3,9 +3,17 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { login as apiLogin, logout as apiLogout, getMe, ApiError, type BackendUser } from '@/lib/api'
 
+interface DisplayUser {
+  username: string
+  email: string
+  // The facility this account belongs to, shown in the header so staff can
+  // see which facility they are signed in to. null when none is assigned.
+  facilityName: string | null
+}
+
 interface AuthContextType {
   isAuthenticated: boolean
-  user: { username: string; email: string } | null
+  user: DisplayUser | null
   isLoading: boolean
   // True only while the one-time startup check (is there already a
   // valid token?) is running -- separate from isLoading so the login
@@ -22,12 +30,16 @@ function toDisplayUser(backendUser: BackendUser) {
   // The backend's User model has no separate "username" field (it logs
   // in with email) -- existing screens expect { username, email } though,
   // so we derive a display username from the email's local part.
-  return { username: backendUser.email.split('@')[0], email: backendUser.email }
+  return {
+    username: backendUser.email.split('@')[0],
+    email: backendUser.email,
+    facilityName: backendUser.facility_name ?? null,
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<{ username: string; email: string } | null>(null)
+  const [user, setUser] = useState<DisplayUser | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -25,7 +25,11 @@ export function FacilityHeader() {
     <header className="bg-white border-b border-border px-8 h-20 flex items-center justify-between">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Facility Management</h2>
-        <p className="text-sm text-muted-foreground">Welcome back, {user?.username || 'Facility Mgmt.'}</p>
+        {/* The facility this account runs, so staff can tell at a glance
+            which facility they are signed in to. */}
+        <p className="text-sm text-muted-foreground">
+          {user ? user.facilityName || 'No facility assigned' : ''}
+        </p>
       </div>
 
       <div className="flex items-center gap-3">

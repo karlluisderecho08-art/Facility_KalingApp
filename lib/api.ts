@@ -22,6 +22,9 @@ export interface BackendUser {
   id: number
   email: string
   role: 'mother' | 'facility_staff'
+  // From UserSerializer: the facility this staff account runs, or null if
+  // it hasn't been assigned one yet.
+  facility_name?: string | null
   [key: string]: unknown
 }
 
