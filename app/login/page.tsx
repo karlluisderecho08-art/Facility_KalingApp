@@ -50,8 +50,8 @@ export default function LoginForm() {
           </div>
 
           <div className="text-center mt-2 mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Admin Sign In</h2>
-            <p className="text-xs text-muted-foreground">Sign in to access the admin dashboard</p>
+            <h2 className="text-lg font-semibold text-foreground">Facility Sign In</h2>
+            <p className="text-xs text-muted-foreground">Sign in to manage your facility's bookings</p>
           </div>
 
           {/* The working demo credentials that used to be printed here are
@@ -120,7 +120,7 @@ export default function LoginForm() {
               style={{ marginBottom: '4px' }}
             />
             <p className="text-[11px] text-muted-foreground">
-              Secure Admin Access • KalingApp Management System
+              Secure Facility Access • KalingApp Facility Manager
             </p>
           </div>
         </div>

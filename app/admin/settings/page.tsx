@@ -18,7 +18,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your admin account and system preferences</p>
+        <p className="text-muted-foreground mt-2">Manage your facility account and system preferences</p>
       </div>
 
       {/* Account Settings */}
