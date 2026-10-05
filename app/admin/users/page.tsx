@@ -12,42 +12,29 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Search, MoreHorizontal, Mail, MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Search, Mail, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { formatAmount } from '@/lib/booking'
 
+// Read-only on purpose. This used to also show account status (Active/
+// Inactive) and an Actions menu to deactivate a mother -- both removed:
+// facility staff review milk bank totals here, not account standing, and
+// the only thing that menu could do (deactivate/reactivate) is an
+// account-level decision, not a facility-level one. The backend endpoint
+// this calls (StaffUserSetActiveView) still exists and still works; this
+// page just no longer calls it.
 interface StaffUser {
   id: number
   email: string
   mom_name: string
-  baby_name: string
-  tracking_streaks: number
   // Each a lifetime total across EVERY facility, not just this one --
   // see accounts.serializers.StaffUserListSerializer's docstring. The
-  // backend never scopes these to "at this facility", so neither should
+  // backend never scopes these to "at this facility", so neither does
   // this page: a mother who donated at PGH and received at St. Luke's
   // shows both figures here regardless of which facility's dashboard is
   // asking.
   total_drawn_ml: number
   total_received_ml: number
-  location_consent_given: boolean
-  is_active: boolean
-  date_joined: string
 }
 
 export default function UsersPage() {
@@ -55,9 +42,6 @@ export default function UsersPage() {
   const [users, setUsers] = useState<StaffUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [detailsUser, setDetailsUser] = useState<StaffUser | null>(null)
-  const [pendingToggleId, setPendingToggleId] = useState<number | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const loadUsers = () => {
     setIsLoading(true)
@@ -82,75 +66,15 @@ export default function UsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const activeCount = users.filter((u) => u.is_active).length
-  const locationSharedCount = users.filter((u) => u.location_consent_given).length
-
-  const handleToggleActive = async (user: StaffUser) => {
-    setActionError(null)
-    setPendingToggleId(user.id)
-    try {
-      const res = await apiFetch(`/auth/users/${user.id}/${user.is_active ? 'deactivate' : 'activate'}/`, {
-        method: 'POST',
-      })
-      if (!res.ok) throw new Error('Could not update this user')
-      const updated = await res.json()
-      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not update this user')
-    } finally {
-      setPendingToggleId(null)
-    }
-  }
-
-  const getStatusBadge = (isActive: boolean) =>
-    isActive ? (
-      <Badge className="bg-chart-2 hover:bg-chart-2">
-        <CheckCircle className="mr-1 h-3 w-3" />
-        Active
-      </Badge>
-    ) : (
-      <Badge variant="destructive">
-        <XCircle className="mr-1 h-3 w-3" />
-        Inactive
-      </Badge>
-    )
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">User Records</h1>
-        <p className="text-muted-foreground mt-2">View and manage all registered mothers</p>
+        <p className="text-muted-foreground mt-2">Total milk donated and received by each registered mother</p>
       </div>
 
-      {actionError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-          {actionError}
-        </div>
-      )}
-
-      {/* Details Dialog */}
-      <Dialog open={!!detailsUser} onOpenChange={(open) => !open && setDetailsUser(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{detailsUser?.mom_name || detailsUser?.email}</DialogTitle>
-            <DialogDescription>{detailsUser?.email}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 text-sm py-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Baby's name</span><span>{detailsUser?.baby_name || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Tracking streak</span><span>{detailsUser?.tracking_streaks} days</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Total donated</span><span>{detailsUser ? formatAmount(detailsUser.total_drawn_ml) : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Total received</span><span>{detailsUser ? formatAmount(detailsUser.total_received_ml) : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Location shared</span><span>{detailsUser?.location_consent_given ? 'Yes' : 'No'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Joined</span><span>{detailsUser ? new Date(detailsUser.date_joined).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailsUser(null)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Stats Cards */}
+      {/* Stats Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -158,22 +82,6 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : users.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Accounts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : activeCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Location Shared</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : locationSharedCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -184,7 +92,7 @@ export default function UsersPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle>Users</CardTitle>
-              <CardDescription>List of all registered mothers and their details</CardDescription>
+              <CardDescription>List of all registered mothers and their milk bank totals</CardDescription>
             </div>
             <div className="relative w-full md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -218,10 +126,6 @@ export default function UsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead className="text-right">Donated</TableHead>
                     <TableHead className="text-right">Received</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,45 +141,11 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-right text-sm">{formatAmount(user.total_drawn_ml)}</TableCell>
                         <TableCell className="text-right text-sm">{formatAmount(user.total_received_ml)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{user.location_consent_given ? 'Shared' : 'Not shared'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(user.is_active)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(user.date_joined).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button variant="ghost" size="icon" disabled={pendingToggleId === user.id}>
-                                  {pendingToggleId === user.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setDetailsUser(user)}>View Profile</DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleToggleActive(user)}
-                              >
-                                {user.is_active ? 'Deactivate' : 'Reactivate'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                         No users found
                       </TableCell>
                     </TableRow>
