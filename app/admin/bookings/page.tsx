@@ -893,10 +893,8 @@ export default function BookingRequests() {
           <DialogHeader>
             <DialogTitle>Propose a New Date</DialogTitle>
             <DialogDescription>
-              For when no doctor is available on the date{' '}
-              {counterOfferRequest?.owner_name || counterOfferRequest?.owner_email} asked for. Her
-              request stays open and everything she already submitted is kept — she just picks
-              between this date and another time of her own.
+              Offer {counterOfferRequest?.owner_name || counterOfferRequest?.owner_email} another
+              date. Her request stays open.
             </DialogDescription>
           </DialogHeader>
 
