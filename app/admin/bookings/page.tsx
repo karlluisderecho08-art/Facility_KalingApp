@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   Check,
@@ -33,6 +33,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { apiFetch } from '@/lib/api'
+import { DateCalendar } from '@/components/date-calendar'
+import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
 
 interface MilkBankRequest {
   id: number
@@ -81,33 +83,12 @@ type QuestionnaireState = 'idle' | 'loading' | 'loaded' | 'none' | 'error'
 // What is left here is what a facility genuinely cannot work around.
 const DECLINE_REASONS = ['Outdated Serological Test', 'Others']
 
-// The mother's own scheduler offers exactly these, in this order
-// (AllScreens.kt's timeSlots) -- staff must not be able to propose a slot
-// her app would never have let her pick in the first place.
-const TIME_SLOTS = [
-  '8:00 AM', '9:00 AM', '10:00 AM',
-  '11:00 AM', '12:00 PM', '1:00 PM',
-  '2:00 PM', '3:00 PM', '4:00 PM',
-]
-
 // What the mother is told when a date is proposed. She reads this in the
 // app's "Message from Facility Team" card, directly above the Accept /
 // Choose New Time buttons -- without it the date simply moves with no
 // explanation attached.
 const NO_DOCTOR_MESSAGE =
   'No available doctor on your requested date — we have proposed a date when one is available.'
-
-// Today in the browser's own timezone, as the yyyy-mm-dd that <input
-// type="date"> wants for `min`. toISOString() would be wrong here: it
-// converts to UTC first, so for anyone east of Greenwich (Manila is
-// UTC+8) it still reads as yesterday for the first eight hours of the
-// day, and would offer staff a date the backend counts as past.
-function todayForDateInput(): string {
-  const now = new Date()
-  const month = `${now.getMonth() + 1}`.padStart(2, '0')
-  const day = `${now.getDate()}`.padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
 
 // "Others" is the only reason that says nothing on its own. The reason and the
 // notes are concatenated into the single `staff_message` the mother reads (see
@@ -234,6 +215,8 @@ export default function BookingRequests() {
   const [counterOfferDate, setCounterOfferDate] = useState('')
   const [counterOfferTime, setCounterOfferTime] = useState('')
   const [counterOfferNotes, setCounterOfferNotes] = useState('')
+  // Dates the request's facility has marked unavailable for her pathway.
+  const [unavailableDates, setUnavailableDates] = useState<string[]>([])
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -332,8 +315,47 @@ export default function BookingRequests() {
     setCounterOfferDate('')
     setCounterOfferTime('')
     setCounterOfferNotes('')
+    setUnavailableDates([])
     setActionError(null)
+    // The facility publishes its unavailable days per pathway (the same list
+    // the mother's own calendar greys out). Loaded as the dialog opens; until
+    // it arrives, weekends and past dates are already blocked, and if it
+    // fails the dialog still works on those rules alone.
+    apiFetch(`/milkbank/facilities/${request.allocated_facility}/`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((facility) => {
+        if (!facility) return
+        setUnavailableDates(
+          request.request_type === 'DONOR'
+            ? facility.unavailable_donor_dates ?? []
+            : facility.unavailable_recipient_dates ?? []
+        )
+      })
+      .catch(() => {})
   }
+
+  // What she asked for -- greyed out in the picker, since offering it back
+  // would not be a counter-offer.
+  const requestedSlot = useMemo(
+    () => ({
+      date: counterOfferRequest?.preferred_date ?? '',
+      time: counterOfferRequest?.preferred_time ?? '',
+    }),
+    [counterOfferRequest]
+  )
+
+  // A time that was fine when picked can stop being: she changed the date,
+  // or the clock moved past it while the dialog sat open. Clear it rather
+  // than leave a selected-but-greyed time that could still be submitted.
+  useEffect(() => {
+    if (
+      counterOfferDate &&
+      counterOfferTime &&
+      slotBlockedReason(counterOfferTime, counterOfferDate, requestedSlot)
+    ) {
+      setCounterOfferTime('')
+    }
+  }, [counterOfferDate, counterOfferTime, requestedSlot])
 
   /**
    * Offers the mother a different appointment instead of refusing her.
@@ -890,12 +912,12 @@ export default function BookingRequests() {
               <label className="text-sm font-medium">
                 Date a doctor is available <span className="text-destructive">*</span>
               </label>
-              <input
-                type="date"
+              <DateCalendar
                 value={counterOfferDate}
-                min={todayForDateInput()}
-                onChange={(e) => setCounterOfferDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={setCounterOfferDate}
+                blockedReason={(date) => dateBlockedReason(date, unavailableDates)}
+                markedDate={requestedSlot.date}
+                markedLabel="The date she asked for"
               />
             </div>
 
@@ -903,22 +925,40 @@ export default function BookingRequests() {
               <label className="text-sm font-medium">
                 Time <span className="text-destructive">*</span>
               </label>
+              {!counterOfferDate && (
+                <p className="text-xs text-muted-foreground">Pick a date first.</p>
+              )}
               <div className="grid grid-cols-3 gap-2">
-                {TIME_SLOTS.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setCounterOfferTime(slot)}
-                    className={
-                      counterOfferTime === slot
-                        ? 'rounded-lg border border-primary bg-primary text-white text-sm py-2 font-medium'
-                        : 'rounded-lg border border-border bg-background text-sm py-2 hover:bg-light-pink/30'
-                    }
-                  >
-                    {slot}
-                  </button>
-                ))}
+                {TIME_SLOTS.map((slot) => {
+                  const reason = counterOfferDate
+                    ? slotBlockedReason(slot, counterOfferDate, requestedSlot)
+                    : null
+                  const blocked = reason !== null || !counterOfferDate
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={blocked}
+                      title={reason ?? undefined}
+                      onClick={() => setCounterOfferTime(slot)}
+                      className={
+                        counterOfferTime === slot
+                          ? 'rounded-lg border border-primary bg-primary text-white text-sm py-2 font-medium'
+                          : blocked
+                          ? 'rounded-lg border border-border bg-muted/60 text-muted-foreground/40 text-sm py-2 cursor-not-allowed line-through decoration-muted-foreground/30'
+                          : 'rounded-lg border border-border bg-background text-sm py-2 hover:bg-light-pink/30'
+                      }
+                    >
+                      {slot}
+                    </button>
+                  )
+                })}
               </div>
+              {counterOfferDate && (
+                <p className="text-xs text-muted-foreground">
+                  Greyed-out times have passed, or are the time she already asked for.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
