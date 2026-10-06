@@ -1,7 +1,7 @@
 'use client'
 
 import { ProcessQueue } from '@/components/process-queue'
-import { RECIPIENT_STAGES } from '@/lib/booking'
+import { DECLINE_REASONS, RECIPIENT_STAGES } from '@/lib/booking'
 
 // Recording an amount here SUBTRACTS from facility stock, and the backend
 // refuses the request outright if the facility does not hold that much --
@@ -15,6 +15,7 @@ export default function RecipientResultsPage() {
       stage={RECIPIENT_STAGES.results}
       title="Results — Amount Received"
       description="Record how many millilitres each mother actually received. This completes her booking and subtracts the milk from this facility's stock."
+      declineReasons={DECLINE_REASONS.recipientResults}
       action="complete"
       amountLabel="Millilitres dispensed (mL)"
       amountHelp="Whole millilitres. This amount is SUBTRACTED from the facility's milk stock, and cannot exceed what the facility currently holds."

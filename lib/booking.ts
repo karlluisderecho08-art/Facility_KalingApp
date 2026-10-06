@@ -15,6 +15,9 @@ export interface MilkBankRequest {
   current_stage_index: number
   current_sub_status: BookingStatus
   staff_message: string
+  // Short label for why a DECLINED request was declined ("Failed breastmilk
+  // analysis"). Blank for anything that was never declined.
+  decline_reason: string
   submitted_at: string
   preferred_date: string
   preferred_time: string
@@ -77,6 +80,26 @@ export const RECIPIENT_STAGES = {
   status: 'Status',
   bookingConfirmation: 'Booking Confirmation',
   results: 'Results',
+} as const
+
+// What staff can pick when they decline someone partway through, per phase.
+// Each phase offers the ways it can genuinely fail, plus "Others" (which
+// requires a note, because "Others" alone tells the mother nothing). These
+// labels are what the admin statistics count, so a renamed label starts a
+// new bar in the "top reasons" chart rather than merging with the old one.
+export const OTHER_DECLINE_REASON = 'Others'
+
+export const DECLINE_REASONS = {
+  donorCounseling: [
+    'Failed blood test',
+    'Failed physical examination',
+    'Did not pass counseling',
+    OTHER_DECLINE_REASON,
+  ],
+  donorAnalysis: ['Failed breastmilk analysis', OTHER_DECLINE_REASON],
+  donorResults: ['Milk did not meet quality standards', OTHER_DECLINE_REASON],
+  recipientReview: ['Incomplete or invalid requirements', OTHER_DECLINE_REASON],
+  recipientResults: ['Not enough milk available', OTHER_DECLINE_REASON],
 } as const
 
 export function formatDateTime(preferredDate?: string, preferredTime?: string) {

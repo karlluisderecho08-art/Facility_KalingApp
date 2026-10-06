@@ -43,6 +43,7 @@ interface MilkBankRequest {
   current_stage_index: number
   current_sub_status: keyof typeof STATUS_LABELS
   staff_message: string
+  decline_reason: string
   submitted_at: string
   preferred_date: string
   preferred_time: string
@@ -312,7 +313,9 @@ export default function BookingRequests() {
     try {
       const res = await apiFetch(`/milkbank/requests/${declineRequest.id}/decline/`, {
         method: 'POST',
-        body: JSON.stringify({ staff_message }),
+        // `reason` is the short label the admin statistics group by;
+        // staff_message is the same reason plus notes, which the mother reads.
+        body: JSON.stringify({ reason: declineReason, staff_message }),
       })
       if (!res.ok) throw new Error((await res.json())?.detail || 'Could not decline this request')
       const updated = await res.json()
@@ -466,10 +469,12 @@ export default function BookingRequests() {
             </div>
           </div>
 
-          {variant === 'declined' && request.staff_message && (
+          {variant === 'declined' && (request.staff_message || request.decline_reason) && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Decline Reason</p>
-              <p className="text-sm font-medium text-destructive">{request.staff_message}</p>
+              <p className="text-sm font-medium text-destructive">
+                {request.staff_message || request.decline_reason}
+              </p>
             </div>
           )}
 

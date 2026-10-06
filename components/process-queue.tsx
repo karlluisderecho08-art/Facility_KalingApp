@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Mail, Building2, CalendarClock, Loader2, Search, Hourglass } from 'lucide-react'
+import { Check, X, Mail, Building2, CalendarClock, Loader2, Search, Hourglass } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import {
   MilkBankRequest,
+  OTHER_DECLINE_REASON,
   STATUS_LABELS,
   formatDateTime,
   formatSubmitted,
@@ -59,6 +60,11 @@ interface ProcessQueueProps {
   amountHelp?: string
   /** Shown instead of a button for `wait`. */
   waitingNote?: string
+  /**
+   * Why staff can decline someone on this phase (see DECLINE_REASONS in
+   * lib/booking.ts). A phase that passes none gets no Decline button.
+   */
+  declineReasons?: readonly string[]
 }
 
 export function ProcessQueue({
@@ -71,6 +77,7 @@ export function ProcessQueue({
   amountLabel = 'Millilitres (mL)',
   amountHelp,
   waitingNote = 'Waiting on the mother. Nothing to do here until she acts.',
+  declineReasons = [],
 }: ProcessQueueProps) {
   const [requests, setRequests] = useState<MilkBankRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -83,6 +90,12 @@ export function ProcessQueue({
   const [completeAmountMl, setCompleteAmountMl] = useState('')
   const [completeError, setCompleteError] = useState<string | null>(null)
   const [isCompleting, setIsCompleting] = useState(false)
+
+  const [declineRequest, setDeclineRequest] = useState<MilkBankRequest | null>(null)
+  const [declineReason, setDeclineReason] = useState('')
+  const [declineNotes, setDeclineNotes] = useState('')
+  const [declineError, setDeclineError] = useState<string | null>(null)
+  const [isDeclining, setIsDeclining] = useState(false)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -130,6 +143,54 @@ export function ProcessQueue({
     } finally {
       setAdvancingId(null)
     }
+  }
+
+  /**
+   * Ends a booking that failed partway through -- a bad blood test, a failed
+   * breastmilk analysis. The backend makes DECLINED terminal and releases the
+   * facility's slot, so the mother is told and nothing can advance or
+   * complete it afterwards. It then shows under Declined on Booking Requests.
+   */
+  const handleSubmitDecline = async () => {
+    if (!declineRequest) return
+    if (!declineReason) {
+      setDeclineError('Choose a reason before declining.')
+      return
+    }
+    // "Others" alone would send the mother the single word "Others".
+    if (declineReason === OTHER_DECLINE_REASON && !declineNotes.trim()) {
+      setDeclineError('Add a note explaining the reason -- the mother reads it.')
+      return
+    }
+    setIsDeclining(true)
+    setDeclineError(null)
+    const notes = declineNotes.trim()
+    try {
+      const res = await apiFetch(`/milkbank/requests/${declineRequest.id}/decline/`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reason: declineReason,
+          staff_message: notes ? `${declineReason} — ${notes}` : declineReason,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not decline this request')
+      const updated = await res.json()
+      // A declined request is no longer on any phase, so it leaves this
+      // queue the moment it is replaced.
+      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setDeclineRequest(null)
+    } catch (err) {
+      setDeclineError(err instanceof Error ? err.message : 'Could not decline this request')
+    } finally {
+      setIsDeclining(false)
+    }
+  }
+
+  const openDecline = (request: MilkBankRequest) => {
+    setDeclineRequest(request)
+    setDeclineReason('')
+    setDeclineNotes('')
+    setDeclineError(null)
   }
 
   const handleSubmitComplete = async () => {
@@ -253,34 +314,47 @@ export function ProcessQueue({
                   </div>
                 )}
 
-                {action === 'advance' && (
-                  <Button
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
-                    onClick={() => handleAdvance(request)}
-                    disabled={advancingId === request.id}
-                  >
-                    {advancingId === request.id ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Check className="h-4 w-4 mr-2" />
-                    )}
-                    {advanceLabel}
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {action === 'advance' && (
+                    <Button
+                      className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
+                      onClick={() => handleAdvance(request)}
+                      disabled={advancingId === request.id}
+                    >
+                      {advancingId === request.id ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4 mr-2" />
+                      )}
+                      {advanceLabel}
+                    </Button>
+                  )}
 
-                {action === 'complete' && (
-                  <Button
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
-                    onClick={() => {
-                      setCompleteRequest(request)
-                      setCompleteAmountMl('')
-                      setCompleteError(null)
-                    }}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Record amount &amp; complete
-                  </Button>
-                )}
+                  {action === 'complete' && (
+                    <Button
+                      className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
+                      onClick={() => {
+                        setCompleteRequest(request)
+                        setCompleteAmountMl('')
+                        setCompleteError(null)
+                      }}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Record amount &amp; complete
+                    </Button>
+                  )}
+
+                  {action !== 'wait' && declineReasons.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="min-w-[120px] border-destructive/40 text-destructive hover:bg-destructive/10"
+                      onClick={() => openDecline(request)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Decline
+                    </Button>
+                  )}
+                </div>
 
                 {action === 'wait' && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground rounded-lg border border-border border-dashed p-3">
@@ -293,6 +367,68 @@ export function ProcessQueue({
           ))}
         </div>
       )}
+
+      <Dialog open={declineRequest !== null} onOpenChange={(open) => !open && setDeclineRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Decline this request?</DialogTitle>
+            <DialogDescription>
+              {declineRequest?.owner_name || declineRequest?.owner_email} will be told her request
+              was declined and the booking ends here. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Reason <span className="text-destructive">*</span>
+              </label>
+              <select
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select a reason</option>
+                {declineReasons.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {reason}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Notes{' '}
+                {declineReason === OTHER_DECLINE_REASON ? (
+                  <span className="text-destructive">*</span>
+                ) : (
+                  <span className="font-normal text-muted-foreground">(Optional)</span>
+                )}
+              </label>
+              <textarea
+                value={declineNotes}
+                onChange={(e) => setDeclineNotes(e.target.value)}
+                rows={3}
+                placeholder="Anything she should know -- the mother reads this..."
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            {declineError && <p className="text-sm text-destructive">{declineError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineRequest(null)} disabled={isDeclining}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={handleSubmitDecline}
+              disabled={isDeclining}
+            >
+              {isDeclining && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Decline request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={completeRequest !== null} onOpenChange={(open) => !open && setCompleteRequest(null)}>
         <DialogContent>
