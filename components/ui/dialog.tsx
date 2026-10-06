@@ -57,7 +57,14 @@ function DialogContent({
         className={cn(
           // rounded-[20px] + border + shadow, matching the admin dashboard's
           // hand-rolled modal shell instead of shadcn's rounded-xl + ring.
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[20px] border border-border bg-white p-4 text-sm text-popover-foreground shadow-[0_2px_8px_rgba(0,0,0,0.04)] duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          //
+          // max-h + overflow-y-auto: a dialog taller than the window (the
+          // counter-offer one, once it gained a month calendar) used to run
+          // off both edges with no way to reach its buttons, because a
+          // centred fixed box does not scroll with the page. Capped to the
+          // viewport, it scrolls inside itself instead; DialogFooter stays
+          // pinned to the bottom so the actions are always in reach.
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] overflow-y-auto -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[20px] border border-border bg-white p-4 text-sm text-popover-foreground shadow-[0_2px_8px_rgba(0,0,0,0.04)] duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -106,7 +113,13 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-[20px] border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        // sticky: pinned to the bottom of a dialog that scrolls (see
+        // DialogContent). The background is the old bg-muted/50 over white,
+        // made opaque so scrolled content can't show through the buttons.
+        // -bottom-4, not bottom-0: the footer bleeds through the dialog's
+        // p-4 with -mb-4, and sticky measures from the margin edge, so
+        // bottom-0 would hold it a padding's width above the bottom edge.
+        "sticky -bottom-4 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-[20px] border-t bg-[color-mix(in_oklab,var(--muted)_50%,white)] p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
