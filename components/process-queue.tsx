@@ -335,7 +335,7 @@ export function ProcessQueue({
                       className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
                       onClick={() => {
                         setCompleteRequest(request)
-                        setCompleteAmountMl('')
+                        setCompleteAmountMl(request.requested_ml ? String(request.requested_ml) : '')
                         setCompleteError(null)
                       }}
                     >
@@ -449,6 +449,11 @@ export function ProcessQueue({
               value={completeAmountMl}
               onChange={(e) => setCompleteAmountMl(e.target.value)}
             />
+            {completeRequest?.requested_ml ? (
+              <p className="text-xs text-muted-foreground">
+                She requested {completeRequest.requested_ml.toLocaleString()} mL — prefilled; change it if you dispense a different amount.
+              </p>
+            ) : null}
             {amountHelp && <p className="text-xs text-muted-foreground">{amountHelp}</p>}
             {completeError && <p className="text-sm text-destructive">{completeError}</p>}
           </div>

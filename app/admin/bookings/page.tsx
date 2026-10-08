@@ -63,6 +63,7 @@ interface MilkBankRequest {
   has_prescription_proof: boolean
   has_cooler: boolean
   has_medical_abstract: boolean
+  requested_ml: number | null
 }
 
 interface DonorQuestionnaire {
@@ -82,6 +83,16 @@ type QuestionnaireState = 'idle' | 'loading' | 'loaded' | 'none' | 'error'
 // counter-offer she can accept in the app (see handleSubmitCounterOffer).
 // What is left here is what a facility genuinely cannot work around.
 const DECLINE_REASONS = ['Outdated Serological Test', 'Others']
+
+// A recipient is declined for different reasons than a donor. "Not enough
+// milk available" is the one the requested-volume panel exists to support, and
+// it matches the label the Recipient Results stage already uses so the admin
+// statistics group both under one bar.
+const RECIPIENT_DECLINE_REASONS = [
+  'Not enough milk available',
+  'Incomplete or invalid requirements',
+  'Others',
+]
 
 // What the mother is told when a date is proposed. She reads this in the
 // app's "Message from Facility Team" card, directly above the Accept /
@@ -127,6 +138,61 @@ function formatDateTime(preferredDate: string | undefined, preferredTime: string
 function formatDateOnly(date: string) {
   const d = new Date(`${date}T00:00:00`)
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// What the mother asked for next to what the facility holds right now, so staff
+// can see at a glance whether the request can be filled before they confirm.
+// Shown for RECIPIENT requests only. `stock` is undefined until the facility
+// loads (or if it fails), in which case only the request itself is shown.
+function RequestedVolume({
+  requestedMl,
+  stock,
+  pending,
+}: {
+  requestedMl: number | null | undefined
+  stock: number | undefined
+  pending: boolean
+}) {
+  // == null, not === null: undefined too, e.g. a backend not yet serving the field.
+  if (requestedMl == null) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
+        No amount was specified with this request.
+      </div>
+    )
+  }
+  const known = stock !== undefined
+  const exceeds = known && requestedMl > stock
+  const remaining = known ? stock - requestedMl : 0
+  return (
+    <div
+      className={`rounded-lg border p-3 space-y-1 ${
+        exceeds
+          ? 'border-destructive/40 bg-destructive/5'
+          : 'border-accent/30 bg-accent/5'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <span className="text-muted-foreground">Milk requested</span>
+        <span className="font-semibold">{requestedMl.toLocaleString()} mL</span>
+      </div>
+      {known && (
+        <>
+          <div className="flex items-center justify-between gap-4 text-sm">
+            <span className="text-muted-foreground">Current stock</span>
+            <span className="font-medium">{stock.toLocaleString()} mL</span>
+          </div>
+          {pending && (
+            <p className={`text-xs font-medium pt-1 ${exceeds ? 'text-destructive' : 'text-accent'}`}>
+              {exceeds
+                ? `Exceeds current stock by ${(requestedMl - stock).toLocaleString()} mL — you may not be able to fill this.`
+                : `Can be filled — ${remaining.toLocaleString()} mL would remain.`}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 // One heading style for every section of the View Details dialog (Booking,
@@ -218,13 +284,35 @@ export default function BookingRequests() {
   // Dates the request's facility has marked unavailable for her pathway.
   const [unavailableDates, setUnavailableDates] = useState<string[]>([])
 
+  // facility id -> current stock in mL, for the requested-vs-available panel on
+  // recipient cards. Empty until it loads; the panel then shows the request
+  // without a comparison rather than guessing.
+  const [stockByFacility, setStockByFacility] = useState<Record<number, number>>({})
+
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
     setLoadError(null)
     try {
       const res = await apiFetch('/milkbank/requests/all/')
       if (!res.ok) throw new Error(`Failed to load requests (${res.status})`)
-      setRequests(await res.json())
+      const data: MilkBankRequest[] = await res.json()
+      setRequests(data)
+      // Staff only ever see their own facility's requests, so this is
+      // normally one fetch. Best-effort: a failure just hides the comparison.
+      const ids = Array.from(new Set(data.filter((r) => r.request_type === 'RECIPIENT').map((r) => r.allocated_facility)))
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const f = await apiFetch(`/milkbank/facilities/${id}/`)
+            if (!f.ok) return null
+            const body = await f.json()
+            return typeof body.stock_level_ml === 'number' ? ([id, body.stock_level_ml] as const) : null
+          } catch {
+            return null
+          }
+        })
+      )
+      setStockByFacility(Object.fromEntries(entries.filter((e): e is readonly [number, number] => e !== null)))
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to load requests')
     } finally {
@@ -490,6 +578,14 @@ export default function BookingRequests() {
             </div>
           </div>
 
+          {request.request_type === 'RECIPIENT' && (
+            <RequestedVolume
+              requestedMl={request.requested_ml}
+              stock={stockByFacility[request.allocated_facility]}
+              pending={variant === 'pending'}
+            />
+          )}
+
           {variant === 'declined' && (request.staff_message || request.decline_reason) && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Decline Reason</p>
@@ -650,6 +746,11 @@ export default function BookingRequests() {
                         {detailsRequest.neonate_name || '—'}
                       </span>
                     </div>
+                    <RequestedVolume
+                      requestedMl={detailsRequest.requested_ml}
+                      stock={stockByFacility[detailsRequest.allocated_facility]}
+                      pending={detailsRequest.current_sub_status === 'pending'}
+                    />
                     {detailsRequest.clinic_info && (
                       <div className="flex items-start justify-between gap-4 text-sm">
                         <span className="text-muted-foreground">Clinic / doctor notes</span>
@@ -833,7 +934,7 @@ export default function BookingRequests() {
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select a reason</option>
-                {DECLINE_REASONS.map((reason) => (
+                {(declineRequest?.request_type === 'RECIPIENT' ? RECIPIENT_DECLINE_REASONS : DECLINE_REASONS).map((reason) => (
                   <option key={reason} value={reason}>
                     {reason}
                   </option>

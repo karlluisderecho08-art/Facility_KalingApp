@@ -35,6 +35,10 @@ export interface MilkBankRequest {
   // DONOR, dispensed for a RECIPIENT.
   amount_ml: number | null
   completed_at: string | null
+  // RECIPIENT only: the millilitres the mother asked for on the Request Milk
+  // form. null for a DONOR and for recipient requests made before the field
+  // existed. A request, not a reservation -- stock only moves at completion.
+  requested_ml: number | null
 }
 
 export type BookingStatus =
