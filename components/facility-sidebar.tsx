@@ -6,6 +6,7 @@ import {
   BarChart3,
   Calendar,
   Droplets,
+  FileText,
   HeartHandshake,
   Receipt,
   Settings,
@@ -92,6 +93,8 @@ const navItems: NavSection[] = [
   // "Record amount & complete" button with nothing left to record.
   { label: 'Finished Transactions', href: '/admin/transactions', icon: Receipt },
   { label: 'User Records', href: '/admin/users', icon: Users },
+  // PDF reports of the two lists above plus a facility summary -- see app/admin/reports.
+  { label: 'Reports', href: '/admin/reports', icon: FileText },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 

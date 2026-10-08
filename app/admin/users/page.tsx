@@ -12,9 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Search, Mail, Loader2 } from 'lucide-react'
+import { Search, Mail, Loader2, FileDown } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { formatAmount } from '@/lib/booking'
+import { generateReport } from '@/lib/reports'
 
 // Read-only on purpose. This used to also show account status (Active/
 // Inactive) and an Actions menu to deactivate a mother -- both removed:
@@ -35,6 +36,7 @@ interface StaffUser {
   // asking.
   total_drawn_ml: number
   total_received_ml: number
+  date_joined: string
 }
 
 export default function UsersPage() {
@@ -42,6 +44,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<StaffUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
 
   const loadUsers = () => {
     setIsLoading(true)
@@ -66,13 +70,47 @@ export default function UsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  // Exactly the rows on screen, search included.
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true)
+    setPdfError(null)
+    try {
+      await generateReport({
+        sections: ['users'],
+        period: { kind: 'all_time' },
+        mothers: filteredUsers,
+        filterNote: searchTerm.trim() ? `Filtered by search: "${searchTerm.trim()}"` : undefined,
+      })
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Could not generate the PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">User Records</h1>
-        <p className="text-muted-foreground mt-2">Total milk donated and received by each registered mother</p>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">User Records</h1>
+          <p className="text-muted-foreground mt-2">Total milk donated and received by each registered mother</p>
+        </div>
+        <Button
+          onClick={handleDownloadPdf}
+          disabled={isLoading || !!loadError || isGeneratingPdf}
+          className="bg-primary hover:bg-primary/90 text-white shrink-0"
+        >
+          {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+          {isGeneratingPdf ? 'Generating...' : 'Download PDF'}
+        </Button>
       </div>
+
+      {pdfError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {pdfError}
+        </div>
+      )}
 
       {/* Stats Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

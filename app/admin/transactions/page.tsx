@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Mail, Building2, CalendarCheck2, Loader2, Search } from 'lucide-react'
+import { Mail, Building2, CalendarCheck2, FileDown, Loader2, Search } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import {
   formatDateTime,
   isFinished,
 } from '@/lib/booking'
+import { generateReport } from '@/lib/reports'
 
 // The one screen that shows a booking after it's done, from either
 // pathway. Nothing here is actionable -- see the note on ProcessQueue's
@@ -27,6 +28,8 @@ export default function FinishedTransactionsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -60,14 +63,49 @@ export default function FinishedTransactionsPage() {
     // slot), so two bookings for the same day still sort correctly.
     .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''))
 
+  // Exactly the list on screen, search included. For a dated period or a
+  // combined report, use the Reports page.
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true)
+    setPdfError(null)
+    try {
+      await generateReport({
+        sections: ['transactions'],
+        period: { kind: 'all_time' },
+        requests: finished,
+        filterNote: query ? `Filtered by search: "${searchTerm.trim()}"` : undefined,
+      })
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Could not generate the PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Finished Transactions</h1>
-        <p className="text-muted-foreground mt-1">
-          Every completed donor and recipient booking, with the amount recorded when it closed.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Finished Transactions</h1>
+          <p className="text-muted-foreground mt-1">
+            Every completed donor and recipient booking, with the amount recorded when it closed.
+          </p>
+        </div>
+        <Button
+          onClick={handleDownloadPdf}
+          disabled={isLoading || !!loadError || isGeneratingPdf}
+          className="bg-primary hover:bg-primary/90 text-white shrink-0"
+        >
+          {isGeneratingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+          {isGeneratingPdf ? 'Generating...' : 'Download PDF'}
+        </Button>
       </div>
+
+      {pdfError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {pdfError}
+        </div>
+      )}
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
