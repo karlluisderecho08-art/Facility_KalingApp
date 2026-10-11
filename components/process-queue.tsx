@@ -17,7 +17,9 @@ import {
 import { apiFetch } from '@/lib/api'
 import {
   MilkBankRequest,
+  HEALTH_DECLINE_REASONS,
   OTHER_DECLINE_REASON,
+  declineNotesHint,
   STATUS_LABELS,
   formatDateTime,
   formatSubmitted,
@@ -408,9 +410,14 @@ export function ProcessQueue({
                 value={declineNotes}
                 onChange={(e) => setDeclineNotes(e.target.value)}
                 rows={3}
-                placeholder="Anything she should know -- the mother reads this..."
+                placeholder={
+                  HEALTH_DECLINE_REASONS.includes(declineReason)
+                    ? 'Details for the facility record...'
+                    : 'Anything she should know, in plain words...'
+                }
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
+              {declineReason && <p className="text-xs text-muted-foreground">{declineNotesHint(declineReason)}</p>}
             </div>
             {declineError && <p className="text-sm text-destructive">{declineError}</p>}
           </div>

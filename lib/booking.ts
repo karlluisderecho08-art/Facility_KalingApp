@@ -106,6 +106,32 @@ export const DECLINE_REASONS = {
   recipientResults: ['Not enough milk available', OTHER_DECLINE_REASON],
 } as const
 
+// What the MOTHER is shown when a request is declined (backend:
+// milkbank/results.py). She never sees "reason -- notes" verbatim any more:
+// each reason has a plain explanation written for her. For the reasons below,
+// which may point to a health concern for her, she is also advised to see her
+// doctor and the notes are NOT shown to her -- they stay with the facility,
+// so lab findings can be recorded there. For every other reason the notes are
+// passed on as "Note from the facility". Keep this list in step with the
+// backend's (the entries marked as a health concern there).
+export const HEALTH_DECLINE_REASONS: readonly string[] = [
+  'Failed blood test',
+  'Failed physical examination',
+  'Failed breastmilk analysis',
+]
+
+/** The line under a decline dialog's notes box: who will read what is typed there. */
+export function declineNotesHint(reason: string): string {
+  if (!reason) return ''
+  if (HEALTH_DECLINE_REASONS.includes(reason)) {
+    return 'The mother sees a plain explanation and is advised to see her doctor. These notes stay with the facility -- she does not see them.'
+  }
+  if (reason === OTHER_DECLINE_REASON) {
+    return 'These notes are the explanation the mother reads. Use plain words -- no lab values or medical terms.'
+  }
+  return 'The mother sees a plain explanation of this reason, plus these notes. Keep them practical and in plain words.'
+}
+
 export function formatDateTime(preferredDate?: string, preferredTime?: string) {
   if (!preferredDate) return preferredTime || ''
   const d = new Date(`${preferredDate}T00:00:00`)

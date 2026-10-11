@@ -35,6 +35,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { DateCalendar } from '@/components/date-calendar'
 import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
+import { declineNotesHint } from '@/lib/booking'
 
 interface MilkBankRequest {
   id: number
@@ -101,10 +102,10 @@ const RECIPIENT_DECLINE_REASONS = [
 const NO_DOCTOR_MESSAGE =
   'No available doctor on your requested date — we have proposed a date when one is available.'
 
-// "Others" is the only reason that says nothing on its own. The reason and the
-// notes are concatenated into the single `staff_message` the mother reads (see
-// handleSubmitDecline), so picking "Others" with an empty notes box would send
-// her the literal string "Others" and no explanation at all -- worse than not
+// "Others" is the only reason that says nothing on its own. Every other reason
+// is shown to the mother as a plain explanation written for her (backend:
+// milkbank/results.py); for "Others" the notes ARE that explanation, so
+// picking it with an empty notes box would tell her nothing at all -- worse than not
 // offering the option. So notes become mandatory the moment it is selected.
 const OTHER_REASON = 'Others'
 
@@ -385,8 +386,10 @@ export default function BookingRequests() {
     try {
       const res = await apiFetch(`/milkbank/requests/${declineRequest.id}/decline/`, {
         method: 'POST',
-        // `reason` is the short label the admin statistics group by;
-        // staff_message is the same reason plus notes, which the mother reads.
+        // `reason` is the short label the admin statistics group by, and picks
+        // the plain explanation the mother is shown. staff_message (reason plus
+        // notes) reaches her only for reasons that are not health-related --
+        // see declineNotesHint in lib/booking.ts.
         body: JSON.stringify({ reason: declineReason, staff_message }),
       })
       if (!res.ok) throw new Error((await res.json())?.detail || 'Could not decline this request')
@@ -964,12 +967,13 @@ export default function BookingRequests() {
                 onChange={(e) => setDeclineNotes(e.target.value)}
                 placeholder={
                   declineReason === OTHER_REASON
-                    ? 'Explain the reason -- the mother reads this...'
+                    ? 'Explain the reason in plain words -- the mother reads this...'
                     : 'Additional details for this decline...'
                 }
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 rows={3}
               />
+              {declineReason && <p className="text-xs text-muted-foreground">{declineNotesHint(declineReason)}</p>}
               {declineReason === OTHER_REASON && !declineNotes.trim() && (
                 <p className="text-xs text-destructive">
                   A reason is required when declining as &ldquo;Others&rdquo;.
