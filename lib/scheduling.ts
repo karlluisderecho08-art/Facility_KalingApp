@@ -9,6 +9,9 @@
 //   - Weekends are out (the facility works Monday to Friday).
 //   - Dates the facility has marked unavailable for her pathway are out
 //     (Facility.unavailable_donor_dates / unavailable_recipient_dates).
+//   - Days with no booking slot left are out (Facility.fully_booked_dates --
+//     capacity is bookings per day). Her own booked date never is: her own
+//     slot does not count against her, so a different time that day is fine.
 //   - On today's date, a time that has already passed is out.
 //   - On the date she asked for, the time she asked for is out.
 //
@@ -55,7 +58,8 @@ export function slotHour(slot: string): number | null {
 export function dateBlockedReason(
   dateString: string,
   unavailableDates: readonly string[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  fullyBookedDates: readonly string[] = []
 ): string | null {
   if (dateString < toDateString(now)) return 'This date has passed'
   // Today, once the last slot has started, has nothing left to offer.
@@ -64,6 +68,7 @@ export function dateBlockedReason(
   }
   if (isWeekend(dateString)) return 'Weekends are not available'
   if (unavailableDates.includes(dateString)) return 'The facility is unavailable this day'
+  if (fullyBookedDates.includes(dateString)) return 'Fully booked'
   return null
 }
 

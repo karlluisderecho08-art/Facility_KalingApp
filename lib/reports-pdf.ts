@@ -315,11 +315,13 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
           caption: input.facility ? 'As of this report' : 'Facility record unavailable',
         },
         {
-          label: 'Booking slots in use',
-          value: input.facility ? `${count(input.facility.booked_count)} / ${count(input.facility.capacity)}` : '-',
+          label: 'Bookings today',
+          value: input.facility
+            ? `${count(input.facility.bookings_today ?? input.facility.booked_count ?? 0)} / ${count(input.facility.capacity)}`
+            : '-',
           caption: input.facility
             ? input.facility.is_operational
-              ? 'Open for bookings'
+              ? 'Capacity is per day'
               : 'Marked not operational'
             : '',
         },
@@ -342,6 +344,41 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
           caption: `${count(periodCompleted.filter((r) => r.request_type === 'RECIPIENT').length)} completed pickup(s)`,
         },
       ])
+
+      // Each day has its own count against the per-day capacity.
+      const upcoming = input.facility?.upcoming_bookings ?? []
+      if (input.facility && upcoming.length) {
+        const cap = input.facility.capacity
+        subHeading('Bookings per day (next 10 weekdays, as of today)')
+        table(
+          [
+            {
+              header: 'Day',
+              width: 0.4,
+              value: (d: { date: string; count: number }) =>
+                new Date(`${d.date}T00:00:00`).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                }),
+            },
+            { header: 'Booked', width: 0.2, align: 'right', value: (d) => count(d.count) },
+            { header: 'Capacity', width: 0.2, align: 'right', value: () => count(cap) },
+            {
+              header: 'Slots left',
+              width: 0.2,
+              align: 'right',
+              bold: true,
+              value: (d) => (cap > 0 && d.count >= cap ? 'Full' : count(Math.max(0, cap - d.count))),
+            },
+          ],
+          upcoming,
+          'No upcoming days.'
+        )
+        note('A booking holds a slot on the day it is for from the moment it is submitted, until declined or expired.')
+        y += 3
+      }
 
       // Status breakdown, donors and recipients side by side.
       subHeading('Bookings by status')

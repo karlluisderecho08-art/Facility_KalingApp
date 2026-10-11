@@ -283,6 +283,8 @@ export default function BookingRequests() {
   const [counterOfferNotes, setCounterOfferNotes] = useState('')
   // Dates the request's facility has marked unavailable for her pathway.
   const [unavailableDates, setUnavailableDates] = useState<string[]>([])
+  // Days with no booking slot left at her facility (capacity is per day).
+  const [fullyBookedDates, setFullyBookedDates] = useState<string[]>([])
 
   // facility id -> current stock in mL, for the requested-vs-available panel on
   // recipient cards. Empty until it loads; the panel then shows the request
@@ -404,6 +406,7 @@ export default function BookingRequests() {
     setCounterOfferTime('')
     setCounterOfferNotes('')
     setUnavailableDates([])
+    setFullyBookedDates([])
     setActionError(null)
     // The facility publishes its unavailable days per pathway (the same list
     // the mother's own calendar greys out). Loaded as the dialog opens; until
@@ -417,6 +420,11 @@ export default function BookingRequests() {
           request.request_type === 'DONOR'
             ? facility.unavailable_donor_dates ?? []
             : facility.unavailable_recipient_dates ?? []
+        )
+        // Her own date stays offerable (a different time): her slot there is
+        // hers, so the backend does not count it against her.
+        setFullyBookedDates(
+          (facility.fully_booked_dates ?? []).filter((d: string) => d !== request.preferred_date)
         )
       })
       .catch(() => {})
@@ -1014,7 +1022,7 @@ export default function BookingRequests() {
               <DateCalendar
                 value={counterOfferDate}
                 onChange={setCounterOfferDate}
-                blockedReason={(date) => dateBlockedReason(date, unavailableDates)}
+                blockedReason={(date) => dateBlockedReason(date, unavailableDates, new Date(), fullyBookedDates)}
                 markedDate={requestedSlot.date}
                 markedLabel="The date she asked for"
               />

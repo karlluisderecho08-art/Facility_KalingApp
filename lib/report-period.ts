@@ -25,8 +25,13 @@ export interface FacilityRecord {
   address: string
   contact: string
   stock_level_ml: number
+  /** Bookings the facility takes per day -- each day has its own count. */
   capacity: number
-  booked_count: number
+  /** Today's bookings. (booked_count is the same figure, kept by the API for older builds.) */
+  bookings_today?: number
+  booked_count?: number
+  /** The next 10 weekdays: how many slots each has taken. */
+  upcoming_bookings?: { date: string; count: number }[]
   is_operational: boolean
 }
 

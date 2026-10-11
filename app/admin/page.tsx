@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
+import { DailyBookingsCard } from '@/components/daily-bookings-card'
 
 interface MilkBankRequest {
   id: number
@@ -222,6 +223,8 @@ export default function FacilityDashboard() {
           </Card>
         </div>
       )}
+
+      <DailyBookingsCard />
 
       {/* Quick Actions */}
       <Card>
