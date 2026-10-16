@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useUnreadMessages } from '@/lib/messaging'
 import {
   BarChart3,
   Calendar,
   Droplets,
   FileText,
   HeartHandshake,
+  MessageSquare,
   Receipt,
   Settings,
   Users,
@@ -95,11 +97,14 @@ const navItems: NavSection[] = [
   { label: 'User Records', href: '/admin/users', icon: Users },
   // PDF reports of the two lists above plus a facility summary -- see app/admin/reports.
   { label: 'Reports', href: '/admin/reports', icon: FileText },
+  // Private thread with the KalingApp admins -- see app/admin/messages.
+  { label: 'Messages', href: '/admin/messages', icon: MessageSquare },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 
 export function FacilitySidebar() {
   const pathname = usePathname()
+  const unreadMessages = useUnreadMessages()
 
   // '/admin' is an exact match -- as a prefix it would light up for every
   // page in the dashboard, since they all live under it.
@@ -150,6 +155,11 @@ export function FacilitySidebar() {
               >
                 <Icon className="h-5 w-5" />
                 <span className="font-medium">{item.label}</span>
+                {item.href === '/admin/messages' && unreadMessages > 0 && (
+                  <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center">
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </span>
+                )}
               </Link>
             )
           }
