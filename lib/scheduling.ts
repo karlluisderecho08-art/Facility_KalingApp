@@ -14,6 +14,9 @@
 //     slot does not count against her, so a different time that day is fine.
 //   - On today's date, a time that has already passed is out.
 //   - On the date she asked for, the time she asked for is out.
+//   - For a donor, at a facility that limits donor bookings per time slot (the
+//     lab), a time already at that limit is out (Facility.full_donor_slots),
+//     and so is a day on which every time is (donor_fully_booked_dates).
 //
 // Everything is in the browser's own timezone, like the existing date input
 // it replaces -- toISOString() would convert to UTC first and read as
@@ -77,12 +80,14 @@ export function slotBlockedReason(
   slot: string,
   dateString: string,
   requested: { date: string; time: string },
-  now: Date = new Date()
+  now: Date = new Date(),
+  fullTimes: readonly string[] = []
 ): string | null {
   if (dateString === requested.date && slot === requested.time) {
     return 'This is the time she already asked for'
   }
   if (dateString === toDateString(now) && hasStarted(slot, now)) return 'This time has already passed'
+  if (fullTimes.includes(slot)) return 'Fully booked for donors at this time'
   return null
 }
 

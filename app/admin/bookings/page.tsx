@@ -289,6 +289,8 @@ export default function BookingRequests() {
   const [unavailableDates, setUnavailableDates] = useState<string[]>([])
   // Days with no booking slot left at her facility (capacity is per day).
   const [fullyBookedDates, setFullyBookedDates] = useState<string[]>([])
+  // Donor requests only: {"yyyy-mm-dd": [times full for donors]} at her facility.
+  const [fullDonorSlots, setFullDonorSlots] = useState<Record<string, string[]>>({})
 
   // facility id -> current stock in mL, for the requested-vs-available panel on
   // recipient cards. Empty until it loads; the panel then shows the request
@@ -413,6 +415,7 @@ export default function BookingRequests() {
     setCounterOfferNotes('')
     setUnavailableDates([])
     setFullyBookedDates([])
+    setFullDonorSlots({})
     setActionError(null)
     // The facility publishes its unavailable days per pathway (the same list
     // the mother's own calendar greys out). Loaded as the dialog opens; until
@@ -429,9 +432,17 @@ export default function BookingRequests() {
         )
         // Her own date stays offerable (a different time): her slot there is
         // hers, so the backend does not count it against her.
-        setFullyBookedDates(
-          (facility.fully_booked_dates ?? []).filter((d: string) => d !== request.preferred_date)
+        const dayFull: string[] = (facility.fully_booked_dates ?? []).filter(
+          (d: string) => d !== request.preferred_date
         )
+        // A donor also can't be offered an hour the lab is full at, or a day
+        // where every hour is (only when the facility limits donor slots).
+        if (request.request_type === 'DONOR') {
+          setFullDonorSlots(facility.full_donor_slots ?? {})
+          setFullyBookedDates([...dayFull, ...(facility.donor_fully_booked_dates ?? [])])
+        } else {
+          setFullyBookedDates(dayFull)
+        }
       })
       .catch(() => {})
   }
@@ -453,11 +464,11 @@ export default function BookingRequests() {
     if (
       counterOfferDate &&
       counterOfferTime &&
-      slotBlockedReason(counterOfferTime, counterOfferDate, requestedSlot)
+      slotBlockedReason(counterOfferTime, counterOfferDate, requestedSlot, new Date(), fullDonorSlots[counterOfferDate])
     ) {
       setCounterOfferTime('')
     }
-  }, [counterOfferDate, counterOfferTime, requestedSlot])
+  }, [counterOfferDate, counterOfferTime, requestedSlot, fullDonorSlots])
 
   /**
    * Offers the mother a different appointment instead of refusing her.
@@ -1047,7 +1058,7 @@ export default function BookingRequests() {
               <div className="grid grid-cols-3 gap-2">
                 {TIME_SLOTS.map((slot) => {
                   const reason = counterOfferDate
-                    ? slotBlockedReason(slot, counterOfferDate, requestedSlot)
+                    ? slotBlockedReason(slot, counterOfferDate, requestedSlot, new Date(), fullDonorSlots[counterOfferDate])
                     : null
                   const blocked = reason !== null || !counterOfferDate
                   return (
@@ -1072,7 +1083,7 @@ export default function BookingRequests() {
               </div>
               {counterOfferDate && (
                 <p className="text-xs text-muted-foreground">
-                  Greyed-out times have passed, or are the time she already asked for.
+                  Greyed-out times have passed, are the time she already asked for, or are full for donors.
                 </p>
               )}
             </div>
