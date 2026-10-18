@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react'
+import { Calendar, AlertCircle, CheckCircle, Clock, Loader2, Milk } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, getMe } from '@/lib/api'
 import { DailyBookingsCard } from '@/components/daily-bookings-card'
 
 interface MilkBankRequest {
@@ -33,6 +33,14 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
 }
 
+// The standard Philippine milk bank bottle (backend: milkbank.models.BOTTLE_ML).
+const BOTTLE_ML = 100
+
+interface FacilityStock {
+  stock_level_ml: number
+  dispenses_bottles?: boolean
+}
+
 function isWithinLastDays(isoDate: string, days: number) {
   const then = new Date(isoDate).getTime()
   return Date.now() - then <= days * 24 * 60 * 60 * 1000
@@ -46,6 +54,29 @@ export default function FacilityDashboard() {
   const [requests, setRequests] = useState<MilkBankRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  // This staff member's own facility, for its milk stock. null while loading;
+  // 'unavailable' if it can't be read (the rest of the dashboard still works).
+  const [stock, setStock] = useState<FacilityStock | null | 'unavailable'>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const me = await getMe()
+        const id = typeof me?.facility === 'number' ? me.facility : null
+        if (id === null) throw new Error('No facility assigned')
+        const res = await apiFetch(`/milkbank/facilities/${id}/`)
+        if (!res.ok) throw new Error(`Failed (${res.status})`)
+        const body: FacilityStock = await res.json()
+        if (!cancelled) setStock(body)
+      } catch {
+        if (!cancelled) setStock('unavailable')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -95,7 +126,34 @@ export default function FacilityDashboard() {
           (KalingApp/components/admin/dashboard-card.tsx): a uniform
           border-border card that highlights on hover, a padding-based icon
           box instead of a fixed square, and a text-3xl value. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Milk on hand -- the same stock_level_ml recipients are matched
+            against and completed bookings move. Stored in mL; litres (and,
+            where the facility dispenses them, 100 mL bottles) for scale. */}
+        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Milk Stock</p>
+              <p className="text-3xl font-bold text-foreground mt-2">
+                {stock === null || stock === 'unavailable' ? '—' : `${stock.stock_level_ml.toLocaleString()} mL`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stock === null
+                  ? 'Loading...'
+                  : stock === 'unavailable'
+                  ? 'Stock unavailable right now'
+                  : `${(stock.stock_level_ml / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} L on hand` +
+                    (stock.dispenses_bottles
+                      ? ` · about ${Math.floor(stock.stock_level_ml / BOTTLE_ML).toLocaleString()} bottles`
+                      : '')}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-[#FDF6E2] text-accent">
+              <Milk className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-start justify-between">
             <div className="flex-1">
