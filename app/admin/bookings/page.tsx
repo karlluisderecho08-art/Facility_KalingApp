@@ -35,7 +35,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { DateCalendar } from '@/components/date-calendar'
 import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
-import { declineNotesHint } from '@/lib/booking'
+import { declineNotesHint, requestedAmountLabel } from '@/lib/booking'
 
 interface MilkBankRequest {
   id: number
@@ -65,6 +65,7 @@ interface MilkBankRequest {
   has_cooler: boolean
   has_medical_abstract: boolean
   requested_ml: number | null
+  requested_bottles?: number | null
 }
 
 interface DonorQuestionnaire {
@@ -147,10 +148,12 @@ function formatDateOnly(date: string) {
 // loads (or if it fails), in which case only the request itself is shown.
 function RequestedVolume({
   requestedMl,
+  requestedBottles,
   stock,
   pending,
 }: {
   requestedMl: number | null | undefined
+  requestedBottles?: number | null
   stock: number | undefined
   pending: boolean
 }) {
@@ -175,7 +178,7 @@ function RequestedVolume({
     >
       <div className="flex items-center justify-between gap-4 text-sm">
         <span className="text-muted-foreground">Milk requested</span>
-        <span className="font-semibold">{requestedMl.toLocaleString()} mL</span>
+        <span className="font-semibold">{requestedAmountLabel(requestedMl, requestedBottles)}</span>
       </div>
       {known && (
         <>
@@ -592,6 +595,7 @@ export default function BookingRequests() {
           {request.request_type === 'RECIPIENT' && (
             <RequestedVolume
               requestedMl={request.requested_ml}
+              requestedBottles={request.requested_bottles}
               stock={stockByFacility[request.allocated_facility]}
               pending={variant === 'pending'}
             />
@@ -759,6 +763,7 @@ export default function BookingRequests() {
                     </div>
                     <RequestedVolume
                       requestedMl={detailsRequest.requested_ml}
+                      requestedBottles={detailsRequest.requested_bottles}
                       stock={stockByFacility[detailsRequest.allocated_facility]}
                       pending={detailsRequest.current_sub_status === 'pending'}
                     />

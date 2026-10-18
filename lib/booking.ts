@@ -39,6 +39,17 @@ export interface MilkBankRequest {
   // form. null for a DONOR and for recipient requests made before the field
   // existed. A request, not a reservation -- stock only moves at completion.
   requested_ml: number | null
+  // Set when she asked in 100 mL bottles (only at a facility that dispenses
+  // bottles); requested_ml is then this x 100. Optional: an older backend
+  // doesn't send it.
+  requested_bottles?: number | null
+}
+
+/** "3 bottles (300 mL)" when she asked in bottles, else "250 mL". */
+export function requestedAmountLabel(requestedMl: number, requestedBottles?: number | null): string {
+  const ml = `${requestedMl.toLocaleString()} mL`
+  if (!requestedBottles) return ml
+  return `${requestedBottles} bottle${requestedBottles === 1 ? '' : 's'} (${ml})`
 }
 
 export type BookingStatus =

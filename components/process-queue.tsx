@@ -24,6 +24,7 @@ import {
   formatDateTime,
   formatSubmitted,
   isOnStage,
+  requestedAmountLabel,
 } from '@/lib/booking'
 
 /**
@@ -458,7 +459,7 @@ export function ProcessQueue({
             />
             {completeRequest?.requested_ml ? (
               <p className="text-xs text-muted-foreground">
-                She requested {completeRequest.requested_ml.toLocaleString()} mL — prefilled; change it if you dispense a different amount.
+                She requested {requestedAmountLabel(completeRequest.requested_ml, completeRequest.requested_bottles)} — prefilled; change it if you dispense a different amount.
               </p>
             ) : null}
             {amountHelp && <p className="text-xs text-muted-foreground">{amountHelp}</p>}
