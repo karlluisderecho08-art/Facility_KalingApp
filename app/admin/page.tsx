@@ -128,21 +128,24 @@ export default function FacilityDashboard() {
           box instead of a fixed square, and a text-3xl value. */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Milk on hand -- the same stock_level_ml recipients are matched
-            against and completed bookings move. Stored in mL; litres (and,
-            where the facility dispenses them, 100 mL bottles) for scale. */}
+            against and completed bookings move. Shown in litres, with the
+            exact mL it is stored in (and, where the facility dispenses them,
+            100 mL bottles) underneath. */}
         <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Milk Stock</p>
               <p className="text-3xl font-bold text-foreground mt-2">
-                {stock === null || stock === 'unavailable' ? '—' : `${stock.stock_level_ml.toLocaleString()} mL`}
+                {stock === null || stock === 'unavailable'
+                  ? '—'
+                  : `${(stock.stock_level_ml / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} L`}
               </p>
               <p className="text-xs text-muted-foreground mt-2">
                 {stock === null
                   ? 'Loading...'
                   : stock === 'unavailable'
                   ? 'Stock unavailable right now'
-                  : `${(stock.stock_level_ml / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} L on hand` +
+                  : `${stock.stock_level_ml.toLocaleString()} mL on hand` +
                     (stock.dispenses_bottles
                       ? ` · about ${Math.floor(stock.stock_level_ml / BOTTLE_ML).toLocaleString()} bottles`
                       : '')}
