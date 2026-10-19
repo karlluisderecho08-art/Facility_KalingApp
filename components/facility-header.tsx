@@ -22,7 +22,8 @@ export function FacilityHeader() {
 
   return (
     // h-20, matching the sidebar logo box's own fixed h-20 (see facility-sidebar.tsx).
-    <header className="relative z-30 glass bg-glass-strong border-b border-glass-edge px-8 h-20 flex items-center justify-between">
+    // Its side margins match the pages' p-4 md:p-8, so it lines up with the cards.
+    <header className="relative z-30 shrink-0 mx-4 md:mx-8 mt-4 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass px-8 h-20 flex items-center justify-between">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Facility Management</h2>
         {/* The facility this account runs, so staff can tell at a glance

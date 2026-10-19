@@ -42,7 +42,7 @@ export default function MessagesPage() {
         <h1 className="text-3xl font-bold text-foreground">Messages</h1>
         <p className="text-muted-foreground mt-2">Talk privately with the KalingApp admin team</p>
       </div>
-      <div className="h-[calc(100vh-17rem)] min-h-[420px]">
+      <div className="h-[calc(100vh-18rem)] min-h-[420px]">
         <MessageThread
           title={facilityName ? `${facilityName} ↔ KalingApp Admin` : 'KalingApp Admin'}
           messages={messages}

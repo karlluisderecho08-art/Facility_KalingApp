@@ -115,12 +115,12 @@ export function FacilitySidebar() {
   }
 
   return (
-    <aside className="w-64 glass bg-glass-strong border-r border-glass-edge overflow-y-auto">
+    <aside className="w-64 shrink-0 m-4 mr-0 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass overflow-y-auto">
       {/* Logo Section -- h-20, matching admin's sidebar exactly (see that
           file's comment): a fixed height here, not content-driven padding,
-          so this box lands at the same height as the header bar's own h-20
-          and their bottom borders form one continuous line instead of a
-          visible step at the sidebar/header boundary. */}
+          so this box is as tall as the header bar's own h-20. Both float
+          1rem from the top, so this border lines up with the header's
+          bottom edge. */}
       <div className="h-20 px-5 border-b border-glass-edge flex items-center">
         <div className="flex items-center gap-3">
           <img
@@ -150,11 +150,11 @@ export function FacilitySidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                   active
-                    ? 'bg-light-pink text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-light-pink/50 hover:text-primary'
+                    ? 'bg-light-pink text-pink-text font-semibold'
+                    : 'text-muted-foreground hover:bg-light-pink/50 hover:text-pink-text'
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className={`h-5 w-5 ${active ? 'text-primary' : ''}`} />
                 <span className="font-medium">{item.label}</span>
                 {item.href === '/admin/messages' && unreadMessages > 0 && (
                   <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center">
@@ -173,13 +173,13 @@ export function FacilitySidebar() {
             <div key={item.label} className="pt-2">
               <div
                 className={`flex items-center gap-3 px-4 py-2 ${
-                  sectionActive ? 'text-primary' : 'text-muted-foreground'
+                  sectionActive ? 'text-pink-text' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className={`h-5 w-5 ${sectionActive ? 'text-primary' : ''}`} />
                 <span className="font-semibold text-sm">{item.label}</span>
               </div>
-              <div className="ml-4 pl-4 border-l border-border space-y-1 mt-1">
+              <div className="ml-4 pl-4 border-l border-glass-edge space-y-1 mt-1">
                 {item.children?.map((child) => {
                   const active = isActive(child.href)
                   return (
@@ -188,8 +188,8 @@ export function FacilitySidebar() {
                       href={child.href}
                       className={`block px-4 py-2 rounded-lg text-sm transition-all duration-200 ${
                         active
-                          ? 'bg-light-pink text-primary font-semibold'
-                          : 'text-muted-foreground hover:bg-light-pink/50 hover:text-primary'
+                          ? 'bg-light-pink text-pink-text font-semibold'
+                          : 'text-muted-foreground hover:bg-light-pink/50 hover:text-pink-text'
                       }`}
                     >
                       {child.label}

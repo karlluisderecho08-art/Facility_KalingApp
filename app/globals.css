@@ -199,14 +199,16 @@
 
    Usage, all plain Tailwind so tailwind-merge can still override them:
      panels   glass bg-glass border border-glass-rim shadow-glass
-     chrome   glass bg-glass-strong border-glass-edge   (sidebar, header)
+     chrome   the same panel recipe, floating and rounded (sidebar, header),
+              like the app's floating glass nav bar
    Dialogs, menus and inputs stay solid white on purpose, as in the app.
    ------------------------------------------------------------------------ */
 @theme {
   --color-glass: rgb(255 255 255 / 0.45);
-  --color-glass-strong: rgb(255 255 255 / 0.8);
   --color-glass-rim: rgb(255 255 255 / 0.85);
   --color-glass-edge: rgb(59 42 85 / 0.09);
+  /* The app's PinkText: brand pink deep enough to read as words. */
+  --color-pink-text: #9E1C4B;
   --shadow-glass: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px 0 rgb(64 32 80 / 0.05), 0 12px 32px -14px rgb(64 32 80 / 0.2);
 }
 
@@ -221,7 +223,6 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
     --color-glass: rgb(255 255 255 / 0.96);
-    --color-glass-strong: rgb(255 255 255 / 0.97);
   }
 }
 
