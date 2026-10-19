@@ -194,8 +194,8 @@
    Liquid glass -- the console version of the mother app's LiquidGlass.kt.
    Same backdrop (cool pale gradient with slowly drifting pink, periwinkle,
    lilac and gold pools) and the same glass recipe (frosted fill, bright
-   rim, soft plum shadow), tuned more opaque and calmer so dense tables
-   and forms stay as readable as they were on solid white.
+   rim, soft plum shadow), tuned calmer and a little more opaque (45% white
+   against the app's 5-13%) so dense tables and forms stay readable.
 
    Usage, all plain Tailwind so tailwind-merge can still override them:
      panels   glass bg-glass border border-glass-rim shadow-glass
@@ -203,7 +203,7 @@
    Dialogs, menus and inputs stay solid white on purpose, as in the app.
    ------------------------------------------------------------------------ */
 @theme {
-  --color-glass: rgb(255 255 255 / 0.72);
+  --color-glass: rgb(255 255 255 / 0.45);
   --color-glass-strong: rgb(255 255 255 / 0.8);
   --color-glass-rim: rgb(255 255 255 / 0.85);
   --color-glass-edge: rgb(59 42 85 / 0.09);
@@ -213,7 +213,7 @@
 @utility glass {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0) 96px);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 96px);
 }
 
 /* Without backdrop-filter the fill alone carries the panel, so make it
