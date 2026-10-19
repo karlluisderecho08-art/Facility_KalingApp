@@ -30,26 +30,26 @@ export default function LoginForm() {
           {/* Logo + Wordmark + Divider — no gaps */}
           <div className="flex flex-col items-center">
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-logo-kZ5dYwW0EczGiFN8WRQf0BUCupImzB.png"
+              src="/kalingapp-logo.png"
               alt="KalingApp Logo"
               width={72}
               height={72}
             />
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-wordmark-r6qrvdcpD2xyjlHXMcKFEoiqAyqI1Y.png"
+              src="/kalingapp-wordmark.png"
               alt="KalingApp"
               width={150}
-              style={{ marginTop: '-4px' }}
+              style={{ marginTop: '6px' }}
             />
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-divider-JwnZPCojLzTTfh13Vz3lmyfQuukVgh.png"
+              src="/kalingapp-divider.png"
               alt=""
               width={180}
-              style={{ marginTop: '-2px' }}
+              style={{ marginTop: '8px' }}
             />
           </div>
 
-          <div className="text-center mt-2 mb-4">
+          <div className="text-center mt-4 mb-4">
             <h2 className="text-lg font-semibold text-foreground">Facility Sign In</h2>
             <p className="text-xs text-muted-foreground">Sign in to manage your facility's bookings</p>
           </div>
@@ -114,10 +114,10 @@ export default function LoginForm() {
           {/* Footer */}
           <div className="flex flex-col items-center mt-4">
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-divider-JwnZPCojLzTTfh13Vz3lmyfQuukVgh.png"
+              src="/kalingapp-divider.png"
               alt=""
               width={150}
-              style={{ marginBottom: '4px' }}
+              style={{ marginBottom: '6px' }}
             />
             <p className="text-[11px] text-muted-foreground">
               Secure Facility Access • KalingApp Facility Manager
