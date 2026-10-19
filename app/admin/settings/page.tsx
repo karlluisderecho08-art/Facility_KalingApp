@@ -4,6 +4,7 @@
 
 import React from 'react'
 import { useAuth } from '@/contexts/auth-context'
+import { CONSOLE_VERSION } from '@/lib/version'
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -60,8 +61,8 @@ export default function SettingsPage() {
 
         <div className="space-y-4 text-sm">
           <div className="flex justify-between py-2 border-b border-border/50">
-            <span className="text-muted-foreground">System Version</span>
-            <span className="text-foreground font-medium">1.0.0</span>
+            <span className="text-muted-foreground">Facility console version</span>
+            <span className="text-foreground font-medium">{CONSOLE_VERSION}</span>
           </div>
           <div className="flex justify-between py-2">
             <span className="text-muted-foreground">Backend</span>

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useUnreadMessages } from '@/lib/messaging'
+import { CONSOLE_VERSION } from '@/lib/version'
 import {
   BarChart3,
   Calendar,
@@ -200,6 +201,8 @@ export function FacilitySidebar() {
           )
         })}
       </nav>
+
+      <p className="px-8 pb-6 text-xs text-muted-foreground">KalingApp v{CONSOLE_VERSION}</p>
     </aside>
   )
 }

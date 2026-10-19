@@ -66,6 +66,9 @@ interface MilkBankRequest {
   has_medical_abstract: boolean
   requested_ml: number | null
   requested_bottles?: number | null
+  // When the representative's details were removed under the retention
+  // policy (7 days after the request closed). Optional: older backends omit it.
+  representative_purged_at?: string | null
 }
 
 interface DonorQuestionnaire {
@@ -818,6 +821,17 @@ export default function BookingRequests() {
                 <Separator />
                 <div className="space-y-2.5">
                   <SectionHeading icon={UserRound}>Pickup Representative</SectionHeading>
+                  {detailsRequest.representative_purged_at ? (
+                    <p className="pl-1 text-sm text-muted-foreground">
+                      Details removed on{' '}
+                      {new Date(detailsRequest.representative_purged_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}{' '}
+                      under the data-retention policy.
+                    </p>
+                  ) : (
                   <div className="space-y-1.5 pl-1">
                     <div className="flex items-start justify-between gap-4 text-sm">
                       <span className="text-muted-foreground">Name</span>
@@ -838,6 +852,7 @@ export default function BookingRequests() {
                       </span>
                     </div>
                   </div>
+                  )}
                 </div>
               </>
             )}
