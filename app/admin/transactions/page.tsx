@@ -140,7 +140,7 @@ export default function FinishedTransactionsPage() {
       ) : (
         <div className="space-y-4">
           {finished.map((request) => (
-            <Card key={request.id} className="border-border">
+            <Card key={request.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2 mb-1">
                   <CardTitle className="text-lg">

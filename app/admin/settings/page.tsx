@@ -23,7 +23,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Account Settings */}
-      <div className="bg-white rounded-[18px] border border-border p-8 max-w-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+      <div className="glass bg-glass rounded-[18px] border border-glass-rim p-8 max-w-2xl shadow-glass">
         <h2 className="text-2xl font-semibold text-foreground mb-6">Account Information</h2>
 
         <div className="space-y-6">
@@ -56,7 +56,7 @@ export default function SettingsPage() {
       </div>
 
       {/* System Information */}
-      <div className="bg-white rounded-[18px] border border-border p-8 max-w-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+      <div className="glass bg-glass rounded-[18px] border border-glass-rim p-8 max-w-2xl shadow-glass">
         <h2 className="text-2xl font-semibold text-foreground mb-6">System Information</h2>
 
         <div className="space-y-4 text-sm">

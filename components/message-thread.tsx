@@ -96,98 +96,102 @@ export function MessageThread({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-white rounded-[18px] border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-foreground truncate">{title}</h2>
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-            <Lock className="h-3 w-3" />
-            {subtitle ?? 'Private between this facility and the KalingApp admins'}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setConfirmingClear(true)}
-          disabled={messages.length === 0 || clearing}
-          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-destructive text-destructive hover:bg-destructive hover:text-white transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none text-sm font-medium"
-        >
-          <Trash2 className="h-4 w-4" />
-          Clear session
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[#FFF8FA]">
-        {loading && messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+    <>
+      <div className="flex flex-col h-full min-h-0 glass bg-glass rounded-[18px] border border-glass-rim shadow-glass">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-foreground truncate">{title}</h2>
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              <Lock className="h-3 w-3" />
+              {subtitle ?? 'Private between this facility and the KalingApp admins'}
+            </p>
           </div>
-        ) : error ? (
-          <div className="h-full flex items-center justify-center text-sm text-destructive">{error}</div>
-        ) : messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-6">
-            No messages yet. Anything you send here is visible only to this facility and the KalingApp admins.
-          </div>
-        ) : (
-          messages.map((m) => {
-            const mine = m.side === mySide
-            return (
-              <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                <div
-                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                    mine
-                      ? 'bg-primary text-white rounded-tr-md'
-                      : 'bg-white border border-border text-foreground rounded-tl-md'
-                  }`}
-                >
-                  {m.body}
-                </div>
-                <span className="mt-1 text-[11px] text-muted-foreground">
-                  {mine ? 'You' : m.sender_name} · {formatTime(m.created_at)}
-                </span>
-              </div>
-            )
-          })
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Composer */}
-      <div className="px-6 py-4 border-t border-border">
-        {sendError && <p className="mb-2 text-sm text-destructive">{sendError}</p>}
-        <div className="flex items-end gap-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              // Enter sends, Shift+Enter is a new line.
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                send()
-              }
-            }}
-            maxLength={MAX_MESSAGE_LENGTH}
-            rows={2}
-            placeholder="Write a message…"
-            className="flex-1 resize-none px-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
           <button
             type="button"
-            onClick={send}
-            disabled={!canSend}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary hover:bg-[#E05F86] text-white transition-all duration-200 disabled:opacity-50"
+            onClick={() => setConfirmingClear(true)}
+            disabled={messages.length === 0 || clearing}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-destructive text-destructive hover:bg-destructive hover:text-white transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none text-sm font-medium"
           >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Send
+            <Trash2 className="h-4 w-4" />
+            Clear session
           </button>
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground text-right">
-          {draft.length}/{MAX_MESSAGE_LENGTH}
-        </p>
+
+        {/* Messages */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[#FFF8FA]/60">
+          {loading && messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="h-full flex items-center justify-center text-sm text-destructive">{error}</div>
+          ) : messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-6">
+              No messages yet. Anything you send here is visible only to this facility and the KalingApp admins.
+            </div>
+          ) : (
+            messages.map((m) => {
+              const mine = m.side === mySide
+              return (
+                <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                      mine
+                        ? 'bg-primary text-white rounded-tr-md'
+                        : 'bg-white border border-border text-foreground rounded-tl-md'
+                    }`}
+                  >
+                    {m.body}
+                  </div>
+                  <span className="mt-1 text-[11px] text-muted-foreground">
+                    {mine ? 'You' : m.sender_name} · {formatTime(m.created_at)}
+                  </span>
+                </div>
+              )
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Composer */}
+        <div className="px-6 py-4 border-t border-border">
+          {sendError && <p className="mb-2 text-sm text-destructive">{sendError}</p>}
+          <div className="flex items-end gap-3">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends, Shift+Enter is a new line.
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  send()
+                }
+              }}
+              maxLength={MAX_MESSAGE_LENGTH}
+              rows={2}
+              placeholder="Write a message…"
+              className="flex-1 resize-none px-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+              type="button"
+              onClick={send}
+              disabled={!canSend}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary hover:bg-[#E05F86] text-white transition-all duration-200 disabled:opacity-50"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Send
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground text-right">
+            {draft.length}/{MAX_MESSAGE_LENGTH}
+          </p>
+        </div>
       </div>
 
-      {/* Clear confirmation */}
+      {/* Clear confirmation -- a sibling of the panel, not a child: the
+          panel's backdrop-filter would make it the containing block for
+          this fixed overlay. */}
       {confirmingClear && (
         <div
           className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
@@ -232,6 +236,6 @@ export function MessageThread({
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

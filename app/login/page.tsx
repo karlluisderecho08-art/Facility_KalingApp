@@ -24,9 +24,9 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-border px-7 py-6">
+        <div className="glass bg-glass rounded-[20px] shadow-glass border border-glass-rim px-7 py-6">
           {/* Logo + Wordmark + Divider — no gaps */}
           <div className="flex flex-col items-center">
             <img

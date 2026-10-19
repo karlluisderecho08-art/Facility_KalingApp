@@ -131,7 +131,7 @@ export default function FacilityDashboard() {
             against and completed bookings move. Shown in litres, with the
             exact mL it is stored in (and, where the facility dispenses them,
             100 mL bottles) underneath. */}
-        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="glass bg-glass rounded-[18px] border border-glass-rim p-6 hover:border-primary/50 transition-all duration-200 shadow-glass">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Milk Stock</p>
@@ -157,7 +157,7 @@ export default function FacilityDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="glass bg-glass rounded-[18px] border border-glass-rim p-6 hover:border-primary/50 transition-all duration-200 shadow-glass">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Pending Requests</p>
@@ -170,7 +170,7 @@ export default function FacilityDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="glass bg-glass rounded-[18px] border border-glass-rim p-6 hover:border-primary/50 transition-all duration-200 shadow-glass">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Confirmed This Week</p>
@@ -183,7 +183,7 @@ export default function FacilityDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[18px] border border-border p-6 hover:border-primary/50 transition-all duration-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div className="glass bg-glass rounded-[18px] border border-glass-rim p-6 hover:border-primary/50 transition-all duration-200 shadow-glass">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm font-medium text-muted-foreground">Action Required</p>

@@ -12,11 +12,11 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        // Matches the admin dashboard's hand-rolled card recipe
-        // (bg-white rounded-[18px] border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)]),
-        // used consistently across KalingApp/app/admin/*/page.tsx, in place of
-        // shadcn's default rounded-xl + ring treatment.
-        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-[18px] border border-border bg-white py-(--card-spacing) text-sm text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.04)] [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-[18px] *:[img:last-child]:rounded-b-[18px]",
+        // Matches the admin dashboard's liquid-glass panel recipe
+        // (glass bg-glass rounded-[18px] border border-glass-rim shadow-glass, see
+        // app/globals.css), in place of shadcn's default rounded-xl + ring
+        // treatment. Callers can still override bg-*/border-* through cn().
+        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-[18px] border border-glass-rim glass bg-glass py-(--card-spacing) text-sm text-card-foreground shadow-glass [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-[18px] *:[img:last-child]:rounded-b-[18px]",
         className
       )}
       {...props}

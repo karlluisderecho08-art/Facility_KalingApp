@@ -31,7 +31,7 @@ export default function FacilityLayout({
 
   if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
@@ -40,7 +40,7 @@ export default function FacilityLayout({
   if (!isAuthenticated) return null
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-screen text-foreground">
       <FacilitySidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FacilityHeader />

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist_Mono, Poppins } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
 import './globals.css'
+import { LiquidBackdrop } from '@/components/liquid-backdrop'
 
 const poppins = Poppins({
   variable: '--font-poppins',
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: 'light',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFF6F1' },
+    { media: '(prefers-color-scheme: light)', color: '#F6F6FC' },
   ],
 }
 
@@ -52,6 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${poppins.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased bg-background text-foreground">
+        <LiquidBackdrop />
         <AuthProvider>
           {children}
         </AuthProvider>

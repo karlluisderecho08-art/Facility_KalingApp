@@ -137,7 +137,7 @@ export default function ReportsPage() {
       )}
 
       {/* Period */}
-      <div className="bg-white rounded-[18px] border border-border p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-4">
+      <div className="glass bg-glass rounded-[18px] border border-glass-rim p-6 shadow-glass space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Report period</h2>
           <p className="text-sm text-muted-foreground">Applies to the summary and to finished transactions.</p>
@@ -213,8 +213,8 @@ export default function ReportsPage() {
                 role="checkbox"
                 aria-checked={checked}
                 onClick={() => toggle(section.id)}
-                className={`text-left bg-white rounded-[18px] border p-5 transition shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${
-                  checked ? 'border-primary ring-1 ring-primary/30' : 'border-border hover:border-primary/50'
+                className={`text-left glass bg-glass rounded-[18px] border p-5 transition shadow-glass ${
+                  checked ? 'border-primary ring-1 ring-primary/30' : 'border-glass-rim hover:border-primary/50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
