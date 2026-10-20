@@ -4,4 +4,4 @@
  * app (versionName). Bump it together with package.json's "version" and the
  * other parts, and tag the release v<version>.
  */
-export const CONSOLE_VERSION = '1.2.0'
+export const CONSOLE_VERSION = '1.2.1'
