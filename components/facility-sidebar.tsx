@@ -26,7 +26,7 @@ import {
 // The two pathways have genuinely different shapes and are NOT symmetric:
 //
 //   Donor      Booking Request -> (she confirms attendance in the app)
-//              -> Counseling and Testing -> Breastmilk Analysis -> Results
+//              -> Counseling and Testing -> Breastmilk Collection -> Results
 //
 //   Recipient  Booking Request -> Status (staff review) -> Booking
 //              Confirmation (she confirms) -> Results
@@ -76,7 +76,7 @@ const navItems: NavSection[] = [
     icon: Droplets,
     children: [
       { label: 'Counseling and Testing', href: '/admin/donor/counseling' },
-      { label: 'Breastmilk Analysis', href: '/admin/donor/analysis' },
+      { label: 'Breastmilk Collection', href: '/admin/donor/collection' },
       { label: 'Results', href: '/admin/donor/results' },
     ],
   },

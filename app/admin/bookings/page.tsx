@@ -223,7 +223,7 @@ function SectionHeading({ icon: Icon, children }: { icon: LucideIcon; children: 
 // Confirmed tab -- earliest-waiting-on-someone first, Completed always
 // last. A 'scheduled' request is ranked (and labeled) by its actual
 // current_stage_index rather than lumped into one "Scheduled" bucket, so
-// e.g. Counseling and Testing sorts ahead of Breastmilk Analysis.
+// e.g. Counseling and Testing sorts ahead of Breastmilk Collection.
 function phaseRank(request: MilkBankRequest): number {
   switch (request.current_sub_status) {
     case 'awaiting_attendance':

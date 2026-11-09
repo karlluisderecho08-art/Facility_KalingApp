@@ -16,7 +16,7 @@ export interface MilkBankRequest {
   current_sub_status: BookingStatus
   staff_message: string
   // Short label for why a DECLINED request was declined ("Failed breastmilk
-  // analysis"). Blank for anything that was never declined.
+  // collection"). Blank for anything that was never declined.
   decline_reason: string
   submitted_at: string
   preferred_date: string
@@ -86,7 +86,7 @@ export const DONOR_STAGES = {
   status: 'Status',
   bookingConfirmation: 'Booking Confirmation',
   counselingAndTesting: 'Counseling and Testing',
-  breastmilkAnalysis: 'Breastmilk Analysis',
+  breastmilkCollection: 'Breastmilk Collection',
   results: 'Results',
 } as const
 
@@ -111,7 +111,7 @@ export const DECLINE_REASONS = {
     'Did not pass counseling',
     OTHER_DECLINE_REASON,
   ],
-  donorAnalysis: ['Failed breastmilk analysis', OTHER_DECLINE_REASON],
+  donorCollection: ['Failed breastmilk collection', OTHER_DECLINE_REASON],
   donorResults: ['Milk did not meet quality standards', OTHER_DECLINE_REASON],
   recipientReview: ['Incomplete or invalid requirements', OTHER_DECLINE_REASON],
   recipientResults: ['Not enough milk available', OTHER_DECLINE_REASON],
@@ -128,7 +128,7 @@ export const DECLINE_REASONS = {
 export const HEALTH_DECLINE_REASONS: readonly string[] = [
   'Failed blood test',
   'Failed physical examination',
-  'Failed breastmilk analysis',
+  'Failed breastmilk collection',
 ]
 
 /** The line under a decline dialog's notes box: who will read what is typed there. */

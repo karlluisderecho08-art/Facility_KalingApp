@@ -150,7 +150,7 @@ export function ProcessQueue({
 
   /**
    * Ends a booking that failed partway through -- a bad blood test, a failed
-   * breastmilk analysis. The backend makes DECLINED terminal and releases the
+   * breastmilk collection. The backend makes DECLINED terminal and releases the
    * facility's slot, so the mother is told and nothing can advance or
    * complete it afterwards. It then shows under Declined on Booking Requests.
    */

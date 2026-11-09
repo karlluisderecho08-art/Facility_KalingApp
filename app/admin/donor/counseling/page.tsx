@@ -13,10 +13,10 @@ export default function DonorCounselingPage() {
       requestType="DONOR"
       stage={DONOR_STAGES.counselingAndTesting}
       title="Counseling and Testing"
-      description="Donors who have confirmed attendance and are in counseling, physical, and blood testing. Approve to move each mother on to Breastmilk Analysis."
+      description="Donors who have confirmed attendance and are in counseling, physical, and blood testing. Approve to move each mother on to Breastmilk Collection."
       declineReasons={DECLINE_REASONS.donorCounseling}
       action="advance"
-      advanceLabel="Approve & move to Breastmilk Analysis"
+      advanceLabel="Approve & move to Breastmilk Collection"
     />
   )
 }
