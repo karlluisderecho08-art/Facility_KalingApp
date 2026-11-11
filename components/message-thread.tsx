@@ -12,7 +12,8 @@ import { AlertTriangle, Loader2, Lock, Send, Trash2 } from 'lucide-react'
 
 export interface ThreadMessage {
   id: number
-  side: 'facility' | 'admin'
+  // 'facility' | 'admin' on the admin thread, 'mother' | 'facility' on a booking chat.
+  side: string
   body: string
   created_at: string
   sender_name: string
@@ -25,11 +26,16 @@ interface MessageThreadProps {
   subtitle?: string
   messages: ThreadMessage[]
   /** Which side the viewer is on -- their own messages go on the right. */
-  mySide: 'facility' | 'admin'
+  mySide: string
   loading?: boolean
   error?: string | null
   onSend: (body: string) => Promise<void>
-  onClear: () => Promise<void>
+  /** Leave out to hide the Clear button (booking chats clear themselves when the booking ends). */
+  onClear?: () => Promise<void>
+  /** Shown when there are no messages yet. */
+  emptyText?: string
+  /** When set, the composer is replaced by this note (e.g. the booking has ended). */
+  closedNote?: string
 }
 
 function formatTime(iso: string) {
@@ -50,6 +56,8 @@ export function MessageThread({
   error = null,
   onSend,
   onClear,
+  emptyText = 'No messages yet. Anything you send here is visible only to this facility and the KalingApp admins.',
+  closedNote,
 }: MessageThreadProps) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -66,7 +74,7 @@ export function MessageThread({
   }, [lastId])
 
   const trimmed = draft.trim()
-  const canSend = trimmed.length > 0 && trimmed.length <= MAX_MESSAGE_LENGTH && !sending
+  const canSend = trimmed.length > 0 && trimmed.length <= MAX_MESSAGE_LENGTH && !sending && !closedNote
 
   const send = async () => {
     if (!canSend) return
@@ -83,6 +91,7 @@ export function MessageThread({
   }
 
   const clear = async () => {
+    if (!onClear) return
     setClearing(true)
     try {
       await onClear()
@@ -107,6 +116,7 @@ export function MessageThread({
               {subtitle ?? 'Private between this facility and the KalingApp admins'}
             </p>
           </div>
+          {onClear && (
           <button
             type="button"
             onClick={() => setConfirmingClear(true)}
@@ -116,6 +126,7 @@ export function MessageThread({
             <Trash2 className="h-4 w-4" />
             Clear session
           </button>
+          )}
         </div>
 
         {/* Messages */}
@@ -128,7 +139,7 @@ export function MessageThread({
             <div className="h-full flex items-center justify-center text-sm text-destructive">{error}</div>
           ) : messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-6">
-              No messages yet. Anything you send here is visible only to this facility and the KalingApp admins.
+              {emptyText}
             </div>
           ) : (
             messages.map((m) => {
@@ -155,6 +166,12 @@ export function MessageThread({
         </div>
 
         {/* Composer */}
+        {closedNote ? (
+          <div className="px-6 py-4 border-t border-border text-sm text-muted-foreground flex items-center gap-2">
+            <Lock className="h-4 w-4 shrink-0" />
+            {closedNote}
+          </div>
+        ) : (
         <div className="px-6 py-4 border-t border-border">
           {sendError && <p className="mb-2 text-sm text-destructive">{sendError}</p>}
           <div className="flex items-end gap-3">
@@ -187,6 +204,7 @@ export function MessageThread({
             {draft.length}/{MAX_MESSAGE_LENGTH}
           </p>
         </div>
+        )}
       </div>
 
       {/* Clear confirmation -- a sibling of the panel, not a child: the

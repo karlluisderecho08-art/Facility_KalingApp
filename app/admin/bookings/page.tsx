@@ -16,6 +16,7 @@ import {
   UserRound,
   CalendarPlus,
   ListChecks,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,7 +36,10 @@ import {
 import { apiFetch } from '@/lib/api'
 import { DateCalendar } from '@/components/date-calendar'
 import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
-import { declineNotesHint, requestedAmountLabel } from '@/lib/booking'
+import { declineNotesHint, isOpenBooking, requestedAmountLabel, type CollectionMethod } from '@/lib/booking'
+import { CollectionMethodInfo } from '@/components/collection-method'
+import { useBookingChatUnread } from '@/lib/booking-chat'
+import Link from 'next/link'
 
 interface MilkBankRequest {
   id: number
@@ -69,6 +73,9 @@ interface MilkBankRequest {
   // When the representative's details were removed under the retention
   // policy (7 days after the request closed). Optional: older backends omit it.
   representative_purged_at?: string | null
+  // DONOR only -- see lib/booking.ts.
+  collection_method?: CollectionMethod | ''
+  delivery_link?: string
 }
 
 interface DonorQuestionnaire {
@@ -272,6 +279,7 @@ export default function BookingRequests() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const { byRequest: unreadChats } = useBookingChatUnread()
   const [detailsRequest, setDetailsRequest] = useState<MilkBankRequest | null>(null)
   const [questionnaire, setQuestionnaire] = useState<DonorQuestionnaire | null>(null)
   const [questionnaireState, setQuestionnaireState] = useState<QuestionnaireState>('idle')
@@ -638,6 +646,21 @@ export default function BookingRequests() {
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
+            {isOpenBooking(request) && (
+              <Button
+                variant="outline"
+                className="flex-1 min-w-[140px]"
+                render={<Link href={`/admin/booking-chats?booking=${request.id}`} />}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat
+                {(unreadChats[String(request.id)] ?? 0) > 0 && (
+                  <span className="ml-2 min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center">
+                    {unreadChats[String(request.id)]}
+                  </span>
+                )}
+              </Button>
+            )}
             {variant === 'pending' && (
               <>
                 <Button
@@ -762,6 +785,13 @@ export default function BookingRequests() {
                 )}
               </div>
             </div>
+
+            {detailsRequest?.request_type === 'DONOR' && (
+              <>
+                <Separator />
+                <CollectionMethodInfo request={detailsRequest} />
+              </>
+            )}
 
             {detailsRequest?.request_type === 'RECIPIENT' && (
               <>

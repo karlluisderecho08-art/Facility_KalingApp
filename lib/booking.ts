@@ -43,6 +43,32 @@ export interface MilkBankRequest {
   // bottles); requested_ml is then this x 100. Optional: an older backend
   // doesn't send it.
   requested_bottles?: number | null
+  // DONOR only: how her milk reaches the facility at Breastmilk Collection.
+  // '' when she booked from an app version that didn't ask. Optional: an
+  // older backend doesn't send either field.
+  collection_method?: CollectionMethod | ''
+  // The courier booking link she pasted -- only ever set for 'drop_off'.
+  delivery_link?: string
+}
+
+export type CollectionMethod = 'pickup' | 'walk_in' | 'drop_off'
+
+export const COLLECTION_METHOD_LABELS: Record<CollectionMethod, string> = {
+  pickup: 'Pick up',
+  walk_in: 'Walk-in',
+  drop_off: 'Drop off (courier delivery)',
+}
+
+/** What staff need to do for each method -- one line under the label. */
+export const COLLECTION_METHOD_HINTS: Record<CollectionMethod, string> = {
+  pickup: 'The facility collects the milk from her.',
+  walk_in: 'She brings the milk to the facility herself.',
+  drop_off: 'She sends the milk by courier. Track it with her delivery booking link.',
+}
+
+/** True when this request is still in progress (its chat is open). */
+export function isOpenBooking(request: Pick<MilkBankRequest, 'current_sub_status'>): boolean {
+  return !['completed', 'declined', 'expired'].includes(request.current_sub_status)
 }
 
 /** "3 bottles (300 mL)" when she asked in bottles, else "250 mL". */

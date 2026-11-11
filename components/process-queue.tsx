@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, X, Mail, Building2, CalendarClock, Loader2, Search, Hourglass } from 'lucide-react'
+import Link from 'next/link'
+import { Check, X, Mail, Building2, CalendarClock, Loader2, Search, Hourglass, MessageCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { apiFetch } from '@/lib/api'
+import { CollectionMethodInfo } from '@/components/collection-method'
+import { useBookingChatUnread } from '@/lib/booking-chat'
 import {
   MilkBankRequest,
   HEALTH_DECLINE_REASONS,
@@ -99,6 +102,7 @@ export function ProcessQueue({
   const [declineNotes, setDeclineNotes] = useState('')
   const [declineError, setDeclineError] = useState<string | null>(null)
   const [isDeclining, setIsDeclining] = useState(false)
+  const { byRequest: unreadChats } = useBookingChatUnread()
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true)
@@ -305,6 +309,8 @@ export function ProcessQueue({
                   </div>
                 </div>
 
+                <CollectionMethodInfo request={request} />
+
                 {request.needs_representative && request.representative_name && (
                   <div className="rounded-lg border border-border p-3 space-y-1">
                     <p className="text-xs text-muted-foreground">Pickup representative</p>
@@ -346,6 +352,20 @@ export function ProcessQueue({
                       Record amount &amp; complete
                     </Button>
                   )}
+
+                  <Button
+                    variant="outline"
+                    className="min-w-[120px]"
+                    render={<Link href={`/admin/booking-chats?booking=${request.id}`} />}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Chat
+                    {(unreadChats[String(request.id)] ?? 0) > 0 && (
+                      <span className="ml-2 min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center">
+                        {unreadChats[String(request.id)]}
+                      </span>
+                    )}
+                  </Button>
 
                   {action !== 'wait' && declineReasons.length > 0 && (
                     <Button
