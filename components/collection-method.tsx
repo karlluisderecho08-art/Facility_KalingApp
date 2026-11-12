@@ -52,7 +52,11 @@ export function CollectionMethodInfo({
                 Open delivery booking link
               </a>
             ) : (
-              <p className="text-xs text-destructive">No delivery booking link was given.</p>
+              // Expected until her appointment hour: she books the courier and
+              // pastes its link then (the app asks for it from that hour on).
+              <p className="text-xs text-muted-foreground">
+                No delivery link yet. The mother pastes it at her appointment hour, when she books the courier.
+              </p>
             ))}
         </>
       ) : (
