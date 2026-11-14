@@ -161,10 +161,10 @@ export const HEALTH_DECLINE_REASONS: readonly string[] = [
 export function declineNotesHint(reason: string): string {
   if (!reason) return ''
   if (HEALTH_DECLINE_REASONS.includes(reason)) {
-    return 'The mother sees a plain explanation and is advised to see her doctor. These notes stay with the facility -- she does not see them.'
+    return 'The mother sees a plain explanation and is advised to see her doctor. These notes stay with the facility — she does not see them.'
   }
   if (reason === OTHER_DECLINE_REASON) {
-    return 'These notes are the explanation the mother reads. Use plain words -- no lab values or medical terms.'
+    return 'These notes are the explanation the mother reads. Use plain words — no lab values or medical terms.'
   }
   return 'The mother sees a plain explanation of this reason, plus these notes. Keep them practical and in plain words.'
 }

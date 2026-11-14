@@ -189,7 +189,7 @@ export default function BookingChatsPage() {
               <div className="flex-1 min-h-[360px]">
                 <MessageThread
                   title={selected ? selected.owner_name || selected.owner_email : `Booking #${selectedId}`}
-                  subtitle="Private between this facility and the mother -- deleted when the booking ends"
+                  subtitle="Private between this facility and the mother — deleted when the booking ends"
                   messages={messages}
                   mySide="facility"
                   loading={chatLoading}

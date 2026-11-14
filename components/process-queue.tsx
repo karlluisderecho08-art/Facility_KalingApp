@@ -166,7 +166,7 @@ export function ProcessQueue({
     }
     // "Others" alone would send the mother the single word "Others".
     if (declineReason === OTHER_DECLINE_REASON && !declineNotes.trim()) {
-      setDeclineError('Add a note explaining the reason -- the mother reads it.')
+      setDeclineError('Add a note explaining the reason — the mother reads it.')
       return
     }
     setIsDeclining(true)

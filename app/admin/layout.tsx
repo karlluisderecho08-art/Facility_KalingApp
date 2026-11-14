@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { FacilitySidebar } from '@/components/facility-sidebar'
@@ -19,6 +19,21 @@ export default function FacilityLayout({
 }) {
   const { isAuthenticated, isInitializing } = useAuth()
   const router = useRouter()
+  // The sidebar only fits beside the page from lg up. Below that it is a
+  // drawer over the page, opened from the header and closed by the backdrop,
+  // Escape, or following one of its links. Before, it stayed open on phones
+  // and tablets and squeezed every page into a strip a few words wide.
+  const [navOpen, setNavOpen] = useState(false)
+  const closeNav = useCallback(() => setNavOpen(false), [])
+
+  useEffect(() => {
+    if (!navOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [navOpen])
 
   useEffect(() => {
     // Wait for the initial /auth/me/ check to finish before deciding to
@@ -41,9 +56,9 @@ export default function FacilityLayout({
 
   return (
     <div className="flex h-screen text-foreground">
-      <FacilitySidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <FacilityHeader />
+      <FacilitySidebar open={navOpen} onClose={closeNav} />
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <FacilityHeader onOpenNav={() => setNavOpen(true)} />
         <main className="flex-1 overflow-auto">
           <div className="p-4 md:p-8">
             {children}

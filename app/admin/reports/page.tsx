@@ -41,7 +41,7 @@ const SECTIONS: { id: ReportSection; title: string; description: string; icon: L
     id: 'users',
     title: 'User Records',
     description:
-      'Every registered mother with her lifetime donated and received totals. A snapshot as of today -- not limited to the period.',
+      'Every mother who has booked at your facility, with what she donated and received here. A snapshot as of today — not limited to the period.',
     icon: Users,
   },
 ]
@@ -81,7 +81,7 @@ export default function ReportsPage() {
     return {
       summary: `${bookingsInPeriod(requests, period).length} booking(s) submitted in this period`,
       transactions: `${completedInPeriod(requests, period).length} transaction(s) completed in this period`,
-      users: `${mothers.length} registered mother(s)`,
+      users: `${mothers.length} mother(s) who booked here`,
     } satisfies Record<ReportSection, string>
   }, [requests, mothers, period, validPeriod])
 
@@ -213,7 +213,10 @@ export default function ReportsPage() {
                 role="checkbox"
                 aria-checked={checked}
                 onClick={() => toggle(section.id)}
-                className={`text-left glass bg-glass rounded-[18px] border p-5 transition shadow-glass ${
+                // flex-col: a <button> centres its content vertically by
+                // default, which sat a shorter card's icon lower than its
+                // neighbours' in the same row.
+                className={`flex flex-col text-left glass bg-glass rounded-[18px] border p-5 transition shadow-glass ${
                   checked ? 'border-primary ring-1 ring-primary/30' : 'border-glass-rim hover:border-primary/50'
                 }`}
               >

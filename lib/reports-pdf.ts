@@ -490,9 +490,9 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
       const donated = mothers.reduce((s, m) => s + (m.total_drawn_ml ?? 0), 0)
       const received = mothers.reduce((s, m) => s + (m.total_received_ml ?? 0), 0)
 
-      sectionHeading('User Records', 'Registered mothers and their lifetime milk bank totals, A to Z.')
+      sectionHeading('User Records', 'Mothers who have booked at this facility and their totals here, A to Z.')
       tiles([
-        { label: 'Registered mothers', value: count(mothers.length) },
+        { label: 'Mothers who booked here', value: count(mothers.length) },
         {
           label: 'Have donated',
           value: count(mothers.filter((m) => (m.total_drawn_ml ?? 0) > 0).length),
@@ -513,7 +513,7 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
           { header: 'Received', width: 0.14, align: 'right', value: (m) => ml(m.total_received_ml) },
         ],
         mothers,
-        'No registered mothers.',
+        'No mothers have booked at this facility yet.',
         mothers.length ? ['Total', '', '', ml(donated), ml(received)] : undefined
       )
       note(

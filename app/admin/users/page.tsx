@@ -28,12 +28,9 @@ interface StaffUser {
   id: number
   email: string
   mom_name: string
-  // Each a lifetime total across EVERY facility, not just this one --
-  // see accounts.serializers.StaffUserListSerializer's docstring. The
-  // backend never scopes these to "at this facility", so neither does
-  // this page: a mother who donated at PGH and received at St. Luke's
-  // shows both figures here regardless of which facility's dashboard is
-  // asking.
+  // What she donated and received at THIS facility only -- the backend
+  // lists only mothers who booked here and never shares what they did at
+  // another facility (accounts.serializers.StaffUserListSerializer).
   total_drawn_ml: number
   total_received_ml: number
   date_joined: string
@@ -94,7 +91,7 @@ export default function UsersPage() {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">User Records</h1>
-          <p className="text-muted-foreground mt-2">Total milk donated and received by each registered mother</p>
+          <p className="text-muted-foreground mt-2">Milk donated and received at your facility by each mother who has booked here</p>
         </div>
         <Button
           onClick={handleDownloadPdf}
@@ -116,7 +113,7 @@ export default function UsersPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Registered Mothers</CardTitle>
+            <CardTitle className="text-sm font-medium">Mothers Who Booked Here</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-foreground">{isLoading ? '—' : users.length}</p>
@@ -130,7 +127,7 @@ export default function UsersPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle>Users</CardTitle>
-              <CardDescription>List of all registered mothers and their milk bank totals</CardDescription>
+              <CardDescription>Mothers who have booked at your facility and their totals here</CardDescription>
             </div>
             <div className="relative w-full md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

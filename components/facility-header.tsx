@@ -1,19 +1,23 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, Menu, User } from 'lucide-react'
 import { NotificationBell } from '@/components/notification-bell'
+import { useDismiss } from '@/hooks/use-dismiss'
 
 // Mirrors the admin dashboard's Header (KalingApp/components/admin/header.tsx)
 // exactly: same header bar, same title/subtitle placement, same hand-rolled
 // dropdown (rather than the shadcn DropdownMenu primitive, whose own default
 // sizing is what made this look and read at a different scale from admin).
-export function FacilityHeader() {
+export function FacilityHeader({ onOpenNav }: { onOpenNav: () => void }) {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [showDropdown, setShowDropdown] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const closeDropdown = useCallback(() => setShowDropdown(false), [])
+  useDismiss(menuRef, showDropdown, closeDropdown)
 
   const handleLogout = () => {
     logout()
@@ -23,28 +27,41 @@ export function FacilityHeader() {
   return (
     // h-20, matching the sidebar logo box's own fixed h-20 (see facility-sidebar.tsx).
     // Its side margins match the pages' p-4 md:p-8, so it lines up with the cards.
-    <header className="relative z-30 shrink-0 mx-4 md:mx-8 mt-4 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass px-8 h-20 flex items-center justify-between">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Facility Management</h2>
-        {/* The facility this account runs, so staff can tell at a glance
-            which facility they are signed in to. */}
-        <p className="text-sm text-muted-foreground">
-          {user ? user.facilityName || 'No facility assigned' : ''}
-        </p>
+    <header className="relative z-30 shrink-0 mx-4 md:mx-8 mt-4 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass px-4 md:px-8 h-20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Below lg the sidebar is a drawer (see app/admin/layout.tsx); this opens it. */}
+        <button
+          type="button"
+          onClick={onOpenNav}
+          aria-label="Open menu"
+          className="lg:hidden flex shrink-0 items-center justify-center h-11 w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">Facility Management</h2>
+          {/* The facility this account runs, so staff can tell at a glance
+              which facility they are signed in to. */}
+          <p className="text-sm text-muted-foreground truncate">
+            {user ? user.facilityName || 'No facility assigned' : ''}
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <NotificationBell />
 
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
+            className="flex items-center gap-3 px-2 sm:px-4 py-2 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
           >
             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
               <User className="h-5 w-5 text-white" />
             </div>
-            <span className="text-sm font-medium text-foreground">{user?.username || 'Facility Mgmt.'}</span>
+            {/* Visually hidden on a phone, where the header has no room for it,
+                but still the button's name for screen readers. */}
+            <span className="sr-only sm:not-sr-only text-sm font-medium text-foreground">{user?.username || 'Facility Mgmt.'}</span>
           </button>
 
           {showDropdown && (

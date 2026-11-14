@@ -107,7 +107,9 @@ const navItems: NavSection[] = [
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 
-export function FacilitySidebar() {
+// `open` only matters below lg, where the sidebar is a drawer over the page
+// (see app/admin/layout.tsx); from lg up it always sits beside the page.
+export function FacilitySidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
   const unreadMessages = useUnreadMessages()
   const { unread: unreadBookingChats } = useBookingChatUnread()
@@ -120,7 +122,13 @@ export function FacilitySidebar() {
   }
 
   return (
-    <aside className="w-64 shrink-0 m-4 mr-0 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass overflow-y-auto">
+    <>
+    {open && <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={onClose} aria-hidden="true" />}
+    <aside
+      className={`w-64 shrink-0 m-4 mr-0 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass overflow-y-auto ${
+        open ? 'fixed inset-y-0 left-0 z-50 lg:static lg:z-auto' : 'hidden lg:block'
+      }`}
+    >
       {/* Logo Section -- h-20, matching admin's sidebar exactly (see that
           file's comment): a fixed height here, not content-driven padding,
           so this box is as tall as the header bar's own h-20. Both float
@@ -129,7 +137,7 @@ export function FacilitySidebar() {
       <div className="h-20 px-5 border-b border-glass-edge flex items-center">
         <div className="flex items-center gap-3">
           <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/kalingapp-logo-kZ5dYwW0EczGiFN8WRQf0BUCupImzB.png"
+            src="/kalingapp-logo.png"
             alt="KalingApp"
             width={44}
             height={44}
@@ -153,6 +161,7 @@ export function FacilitySidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
                   active
                     ? 'bg-light-pink text-pink-text font-semibold'
@@ -199,6 +208,7 @@ export function FacilitySidebar() {
                     <Link
                       key={child.href}
                       href={child.href}
+                      onClick={onClose}
                       className={`block px-4 py-2 rounded-lg text-sm transition-all duration-200 ${
                         active
                           ? 'bg-light-pink text-pink-text font-semibold'
@@ -217,5 +227,6 @@ export function FacilitySidebar() {
 
       <p className="px-8 pb-6 text-xs text-muted-foreground">KalingApp v{CONSOLE_VERSION}</p>
     </aside>
+    </>
   )
 }

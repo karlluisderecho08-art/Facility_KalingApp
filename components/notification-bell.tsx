@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell, Loader2 } from 'lucide-react'
+import { useDismiss } from '@/hooks/use-dismiss'
 import { apiFetch } from '@/lib/api'
 import { AppNotification, formatNotificationDate } from '@/lib/notifications'
 
@@ -16,6 +17,9 @@ export function NotificationBell() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [showDropdown, setShowDropdown] = useState(false)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const closeDropdown = useCallback(() => setShowDropdown(false), [])
+  useDismiss(containerRef, showDropdown, closeDropdown)
 
   const loadNotifications = useCallback(async () => {
     setIsLoading(true)
@@ -79,7 +83,10 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    // Not positioned on a phone, so the panel below hangs from the header bar
+    // itself and spans its width: anchored to this bell, a 24rem panel ran off
+    // the left edge of the screen.
+    <div className="sm:relative" ref={containerRef}>
       <button
         onClick={toggleDropdown}
         className="relative flex items-center justify-center h-11 w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
@@ -94,7 +101,7 @@ export function NotificationBell() {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
+        <div className="absolute left-0 right-0 top-full mt-2 sm:left-auto sm:w-96 bg-white rounded-xl shadow-lg border border-border py-2 z-50">
           <div className="px-4 py-2 border-b border-border flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Notifications</p>
             {unreadCount > 0 && (
