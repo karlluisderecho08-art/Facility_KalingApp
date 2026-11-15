@@ -19,8 +19,9 @@ export function FacilityHeader({ onOpenNav }: { onOpenNav: () => void }) {
   const closeDropdown = useCallback(() => setShowDropdown(false), [])
   useDismiss(menuRef, showDropdown, closeDropdown)
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    setShowDropdown(false)
+    await logout()
     router.push('/login')
   }
 

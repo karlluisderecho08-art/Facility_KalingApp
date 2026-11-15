@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { login as apiLogin, logout as apiLogout, getMe, ApiError, type BackendUser } from '@/lib/api'
+import { login as apiLogin, logout as apiLogout, getMe, ApiError, SIGNED_OUT_EVENT, type BackendUser } from '@/lib/api'
 
 interface DisplayUser {
   username: string
@@ -21,7 +21,7 @@ interface AuthContextType {
   isInitializing: boolean
   error: string | null
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -66,6 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // The session can end while a page is open -- it ran out, the password was
+  // changed, or it was signed out elsewhere. lib/api.ts says so with this
+  // event, and the admin layout then sends the page to sign-in.
+  useEffect(() => {
+    const onSignedOut = () => {
+      setUser(null)
+      setIsAuthenticated(false)
+    }
+    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut)
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut)
+  }, [])
+
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)
     setError(null)
@@ -87,8 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const logout = useCallback(() => {
-    apiLogout()
+  const logout = useCallback(async () => {
+    await apiLogout()
     setUser(null)
     setIsAuthenticated(false)
     setError(null)
