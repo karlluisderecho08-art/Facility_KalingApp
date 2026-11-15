@@ -8,12 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { apiFetch, getMe } from '@/lib/api'
 import { DailyBookingsCard } from '@/components/daily-bookings-card'
+import { bookingStatusLabel } from '@/lib/booking'
 
 interface MilkBankRequest {
   id: number
   request_type: 'DONOR' | 'RECIPIENT'
   allocated_facility_name: string
   current_sub_status: string
+  collection_method?: string
   submitted_at: string
   preferred_date: string
   preferred_time: string
@@ -24,13 +26,6 @@ interface MilkBankRequest {
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   DONOR: 'Donor Screening',
   RECIPIENT: 'Recipient Request',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  awaiting_attendance: 'Awaiting Attendance',
-  scheduled: 'Scheduled',
-  counter_offered: 'Counter Offer Proposed',
-  completed: 'Completed',
 }
 
 // The standard Philippine milk bank bottle (backend: milkbank.models.BOTTLE_ML).
@@ -269,7 +264,7 @@ export default function FacilityDashboard() {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {STATUS_LABELS[request.current_sub_status] || request.current_sub_status} at{' '}
+                          {bookingStatusLabel(request)} at{' '}
                           {request.allocated_facility_name}
                         </p>
                       </div>

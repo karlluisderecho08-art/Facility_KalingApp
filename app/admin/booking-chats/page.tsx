@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { MessageThread, type ThreadMessage } from '@/components/message-thread'
 import { CollectionMethodInfo } from '@/components/collection-method'
 import { apiFetch } from '@/lib/api'
-import { STATUS_LABELS, formatDateTime, isOpenBooking, type MilkBankRequest } from '@/lib/booking'
+import { bookingStatusLabel, formatDateTime, isOpenBooking, type MilkBankRequest } from '@/lib/booking'
 import { getBookingChat, sendBookingMessage, useBookingChatUnread } from '@/lib/booking-chat'
 
 // How often an open chat checks for replies. Paused while the tab is hidden.
@@ -178,7 +178,7 @@ export default function BookingChatsPage() {
                   <Badge variant={selected.request_type === 'DONOR' ? 'default' : 'secondary'}>
                     {selected.request_type === 'DONOR' ? 'Donor' : 'Recipient'}
                   </Badge>
-                  <Badge variant="outline">{STATUS_LABELS[selected.current_sub_status]}</Badge>
+                  <Badge variant="outline">{bookingStatusLabel(selected)}</Badge>
                   {selected.request_type === 'DONOR' && (
                     <div className="basis-full">
                       <CollectionMethodInfo request={selected} />

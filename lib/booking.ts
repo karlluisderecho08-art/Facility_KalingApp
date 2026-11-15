@@ -49,6 +49,14 @@ export interface MilkBankRequest {
   collection_method?: CollectionMethod | ''
   // The courier booking link she pasted -- only ever set for 'drop_off'.
   delivery_link?: string
+  // 'pickup' only: where to collect the milk -- the pin from her phone plus
+  // the address and landmark she typed. Empty/null for any other method, for
+  // a booking from an app version that didn't ask, and a week after the
+  // booking closed (the backend clears them).
+  pickup_address?: string
+  pickup_landmark?: string
+  pickup_latitude?: number | null
+  pickup_longitude?: number | null
 }
 
 export type CollectionMethod = 'pickup' | 'walk_in' | 'drop_off'
@@ -95,6 +103,28 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
   completed: 'Completed',
   declined: 'Declined',
   expired: 'Expired',
+}
+
+/**
+ * A booking's status in words. A Drop off confirms with its courier's
+ * delivery link instead of attendance (the backend's
+ * collection.confirms_by_delivery_link), so while it waits on her it reads
+ * "Awaiting Delivery Link". Once she sends it she goes straight to Breastmilk
+ * Collection -- a Drop off has no Counseling and Testing.
+ */
+export function bookingStatusLabel(request: {
+  current_sub_status: string
+  request_type?: string
+  collection_method?: string | null
+}): string {
+  if (
+    request.current_sub_status === 'awaiting_attendance' &&
+    request.request_type === 'DONOR' &&
+    request.collection_method === 'drop_off'
+  ) {
+    return 'Awaiting Delivery Link'
+  }
+  return (STATUS_LABELS as Record<string, string>)[request.current_sub_status] || request.current_sub_status
 }
 
 // The stage names the backend derives from request_type

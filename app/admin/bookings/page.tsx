@@ -36,7 +36,7 @@ import {
 import { apiFetch } from '@/lib/api'
 import { DateCalendar } from '@/components/date-calendar'
 import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
-import { declineNotesHint, isOpenBooking, requestedAmountLabel, type CollectionMethod } from '@/lib/booking'
+import { bookingStatusLabel, declineNotesHint, isOpenBooking, requestedAmountLabel, type CollectionMethod } from '@/lib/booking'
 import { CollectionMethodInfo } from '@/components/collection-method'
 import { useBookingChatUnread } from '@/lib/booking-chat'
 import Link from 'next/link'
@@ -250,7 +250,7 @@ function phaseLabel(request: MilkBankRequest): string {
   if (request.current_sub_status === 'scheduled') {
     return request.stages[request.current_stage_index] || STATUS_LABELS.scheduled
   }
-  return STATUS_LABELS[request.current_sub_status] || request.current_sub_status
+  return bookingStatusLabel(request)
 }
 
 function groupByPhase(requests: MilkBankRequest[]): [string, MilkBankRequest[]][] {
@@ -585,7 +585,7 @@ export default function BookingRequests() {
                 </Badge>
                 {variant !== 'pending' && (
                   <Badge variant={variant === 'declined' ? 'destructive' : 'outline'}>
-                    {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
+                    {bookingStatusLabel(request)}
                   </Badge>
                 )}
                 {variant === 'confirmed' && request.stages[request.current_stage_index] && (
@@ -706,7 +706,7 @@ export default function BookingRequests() {
           {variant === 'confirmed' && (
             <div className="flex items-center gap-2 pt-2 text-accent text-sm font-medium">
               <Check className="h-4 w-4" />
-              {STATUS_LABELS[request.current_sub_status] || request.current_sub_status}
+              {bookingStatusLabel(request)}
             </div>
           )}
         </CardContent>
@@ -773,8 +773,7 @@ export default function BookingRequests() {
                 <div className="flex items-start justify-between gap-4 text-sm">
                   <span className="text-muted-foreground">Status</span>
                   <Badge variant="outline" className="border-primary/30 text-primary bg-light-pink/50 shrink-0">
-                    {(detailsRequest && STATUS_LABELS[detailsRequest.current_sub_status]) ||
-                      detailsRequest?.current_sub_status}
+                    {detailsRequest && bookingStatusLabel(detailsRequest)}
                   </Badge>
                 </div>
                 {detailsRequest?.staff_message && (
