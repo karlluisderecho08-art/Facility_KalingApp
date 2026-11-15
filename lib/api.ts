@@ -67,7 +67,7 @@ export async function login(email: string, password: string): Promise<BackendUse
   })
 
   if (!res.ok) {
-    throw new ApiError(res.status, 'Invalid email or password')
+    throw new ApiError(res.status, await signInFailure(res))
   }
 
   const { access, refresh } = await res.json()
@@ -84,6 +84,69 @@ export async function login(email: string, password: string): Promise<BackendUse
   }
 
   return user
+}
+
+/** "about 3 minutes", "about 2 hours" -- how long a sign-in lock has left. */
+function aboutHowLong(seconds: number): string {
+  const minutes = Math.max(1, Math.ceil(seconds / 60))
+  if (minutes === 1) return 'about a minute'
+  if (minutes < 90) return `about ${minutes} minutes`
+  const hours = Math.round(minutes / 60)
+  return `about ${hours} hours`
+}
+
+/**
+ * Why a sign-in was refused, in words staff can act on. Every refusal used to
+ * read "Invalid email or password" -- including a locked account, so someone
+ * locked out after too many wrong passwords was told to keep trying.
+ */
+async function signInFailure(res: Response): Promise<string> {
+  if (res.status === 423) {
+    const body = await res.json().catch(() => null)
+    const wait = aboutHowLong(Number(body?.retry_after_seconds) || 0)
+    return (
+      `Too many wrong passwords, so this account is locked for ${wait}. ` +
+      'Use "Forgot password?" to set a new one, or ask your KalingApp admin to unlock it.'
+    )
+  }
+  if (res.status === 429) return 'Too many sign-in attempts. Wait a minute, then try again.'
+  if (res.status === 400 || res.status === 401) return 'Invalid email or password'
+  return 'Could not sign in right now. Please try again.'
+}
+
+/** Why the server refused a reset step, or a fallback. */
+async function resetFailure(res: Response, fallback: string): Promise<string> {
+  if (res.status === 429) return 'Too many tries. Wait a minute, then try again.'
+  const body = await res.json().catch(() => null)
+  return typeof body?.detail === 'string' ? body.detail : fallback
+}
+
+/**
+ * Step 1 of "Forgot password?": POST /auth/forgot-password/ emails a 6-digit
+ * code. The server answers the same whether or not the email has an account,
+ * so this only throws when the request itself failed.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/forgot-password/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new ApiError(res.status, await resetFailure(res, 'Could not send a code. Please try again.'))
+}
+
+/**
+ * Step 2: POST /auth/reset-password/ with the emailed code. The server also
+ * signs the account in, but those tokens are dropped on purpose -- staff sign
+ * in again with the new password, through the same staff-only check as always.
+ */
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/reset-password/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code, new_password: newPassword }),
+  })
+  if (!res.ok) throw new ApiError(res.status, await resetFailure(res, 'Could not change the password. Please try again.'))
 }
 
 export function logout() {

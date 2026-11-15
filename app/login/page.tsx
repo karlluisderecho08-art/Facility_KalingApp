@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, LogIn } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -99,6 +100,11 @@ export default function LoginForm() {
                 disabled={isLoading}
                 className="w-full px-4 py-2.5 rounded-xl bg-white border border-border text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
               />
+              <div className="mt-1.5 text-right">
+                <Link href="/login/reset" className="text-xs font-medium text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <Button
