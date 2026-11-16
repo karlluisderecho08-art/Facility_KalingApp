@@ -64,7 +64,7 @@ export default function LoginForm() {
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 bg-[#FFDAD9] border border-destructive/30 rounded-xl p-3 mb-4">
+            <div role="alert" className="flex items-start gap-2 bg-[#FFDAD9] border border-destructive/30 rounded-xl p-3 mb-4">
               <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
               <p className="text-xs text-destructive">{error}</p>
             </div>
