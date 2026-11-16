@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ApiError, requestPasswordReset, resetPassword } from '@/lib/api'
 
 // The server's rule for a staff password (Backend_KalingApp/accounts/
-// staff_passwords.py): a staff login reads mothers' health records.
+// passwords.py): a staff login reads mothers' health records.
 const MIN_LENGTH = 12
 // The server sends at most one code a minute (RESEND_COOLDOWN_SECONDS).
 const RESEND_WAIT_SECONDS = 60

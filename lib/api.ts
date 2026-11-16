@@ -47,6 +47,30 @@ export class ApiError extends Error {
   }
 }
 
+// This browser's trusted-device token (server: accounts/devices.py). Not a
+// login -- on its own it opens nothing, so localStorage is fine. It tells the
+// server this browser has signed in to the account before, so a stranger who
+// knows the email and types wrong passwords can't lock its owner out of it.
+// Kept through sign-out on purpose; each sign-in replaces it.
+const DEVICE_KEY = 'kalingapp-facility-device'
+
+function storedDeviceToken(): string | null {
+  try {
+    return window.localStorage.getItem(DEVICE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function keepDeviceToken(token: unknown) {
+  if (typeof token !== 'string' || !token) return
+  try {
+    window.localStorage.setItem(DEVICE_KEY, token)
+  } catch {
+    // Storage unavailable: this browser just isn't remembered as trusted.
+  }
+}
+
 let accessToken: string | null = null
 let refreshing: Promise<string | null> | null = null
 let legacyChecked = false
@@ -68,7 +92,9 @@ async function keepSession(refresh: string): Promise<boolean> {
 
 /**
  * Carries a login made before the session cookie existed over to it, once,
- * and removes both tokens from localStorage either way.
+ * then removes both tokens from localStorage. They are removed only after the
+ * hand-over has been answered: if the page closes in the middle, the next
+ * visit simply tries again instead of losing the login.
  */
 async function adoptLegacySession() {
   if (legacyChecked || typeof window === 'undefined') return
@@ -76,12 +102,16 @@ async function adoptLegacySession() {
   let refresh: string | null = null
   try {
     refresh = window.localStorage.getItem(LEGACY_REFRESH_KEY)
-    window.localStorage.removeItem(LEGACY_ACCESS_KEY)
-    window.localStorage.removeItem(LEGACY_REFRESH_KEY)
   } catch {
     return
   }
   if (refresh) await keepSession(refresh)
+  try {
+    window.localStorage.removeItem(LEGACY_ACCESS_KEY)
+    window.localStorage.removeItem(LEGACY_REFRESH_KEY)
+  } catch {
+    // Storage unavailable: nothing more to clean up.
+  }
 }
 
 /**
@@ -122,17 +152,18 @@ function refreshAccessToken(): Promise<string | null> {
  * dashboard.
  */
 export async function login(email: string, password: string): Promise<BackendUser> {
+  const device = storedDeviceToken()
   const res = await fetch(`${API_URL}/auth/login/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, ...(device ? { device_token: device } : {}) }),
   })
 
   if (!res.ok) {
     throw new ApiError(res.status, await signInFailure(res))
   }
 
-  const { access, refresh } = await res.json()
+  const { access, refresh, device_token: deviceToken } = await res.json()
 
   const me = await fetch(`${API_URL}/auth/me/`, {
     headers: { Authorization: `Bearer ${access}` },
@@ -153,6 +184,7 @@ export async function login(email: string, password: string): Promise<BackendUse
     throw new ApiError(500, 'Could not start your session. Please try again.')
   }
   accessToken = access
+  keepDeviceToken(deviceToken)
   return user
 }
 
