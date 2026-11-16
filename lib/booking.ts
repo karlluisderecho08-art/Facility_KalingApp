@@ -21,6 +21,10 @@ export interface MilkBankRequest {
   submitted_at: string
   preferred_date: string
   preferred_time: string
+  // When her appointment begins (epoch ms, worked out by the server on the
+  // Manila clock), or null when the time can't be read. Optional: an older
+  // backend doesn't send it.
+  appointment_start_ms?: number | null
   attendance_confirmed: boolean
   counter_offer_date: string | null
   counter_offer_time: string

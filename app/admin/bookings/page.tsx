@@ -54,6 +54,9 @@ interface MilkBankRequest {
   submitted_at: string
   preferred_date: string
   preferred_time: string
+  // When her appointment begins (epoch ms, Manila clock, from the server);
+  // null when the time can't be read, absent from an older backend.
+  appointment_start_ms?: number | null
   attendance_confirmed: boolean
   counter_offer_date: string | null
   counter_offer_time: string
@@ -566,6 +569,13 @@ export default function BookingRequests() {
     request: MilkBankRequest
     variant: 'pending' | 'confirmed' | 'declined'
   }) => {
+    // A request still waiting for an answer when her appointment hour came
+    // can't be accepted as it is (the server refuses it): staff propose a new
+    // date -- she keeps her application -- or decline. Left alone it expires.
+    const appointmentPassed =
+      variant === 'pending' &&
+      typeof request.appointment_start_ms === 'number' &&
+      request.appointment_start_ms <= Date.now()
     const borderClasses =
       variant === 'pending'
         ? 'border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20'
@@ -632,6 +642,14 @@ export default function BookingRequests() {
             </div>
           )}
 
+          {appointmentPassed && (
+            <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-200">
+              Her appointment time ({formatDateTime(request.preferred_date, request.preferred_time)}) has passed
+              without an answer, so it can&apos;t be confirmed as it is. Propose a new date (she keeps her
+              application), or decline it. Left alone, the request expires on its own.
+            </div>
+          )}
+
           {/* flex-wrap + a min width rather than plain flex-1: a pending
               card carries four actions now, and four equal columns on a
               narrow screen squeezes each label past the point of being
@@ -666,6 +684,8 @@ export default function BookingRequests() {
                 <Button
                   className="flex-1 min-w-[140px] bg-primary hover:bg-primary/90 text-white"
                   onClick={() => handleConfirm(request)}
+                  disabled={appointmentPassed}
+                  title={appointmentPassed ? 'Her appointment time has passed: propose a new date or decline' : undefined}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Confirm
