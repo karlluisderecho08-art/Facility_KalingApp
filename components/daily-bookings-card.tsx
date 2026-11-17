@@ -73,7 +73,7 @@ export function DailyBookingsCard() {
             <CardTitle>Bookings per Day</CardTitle>
             <CardDescription>
               {state === 'loaded'
-                ? `Up to ${capacity} booking${capacity === 1 ? '' : 's'} per day. Pending requests hold their day's slot until declined or expired.`
+                ? `Up to ${capacity} booking${capacity === 1 ? '' : 's'} per day. Pending requests hold their day's slot until declined, expired or cancelled.`
                 : 'Each day has its own booking count.'}
             </CardDescription>
           </div>

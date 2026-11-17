@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   Check,
@@ -17,6 +17,7 @@ import {
   CalendarPlus,
   ListChecks,
   MessageCircle,
+  Hourglass,
   type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,51 +35,38 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { apiFetch } from '@/lib/api'
-import { DateCalendar } from '@/components/date-calendar'
-import { TIME_SLOTS, dateBlockedReason, slotBlockedReason } from '@/lib/scheduling'
-import { bookingStatusLabel, declineNotesHint, isOpenBooking, requestedAmountLabel, type CollectionMethod } from '@/lib/booking'
+import {
+  CLOSED_STATUSES,
+  DESK_DECLINE_REASONS,
+  OTHER_DECLINE_REASON,
+  STATUS_LABELS,
+  bookingStatusLabel,
+  canProposeNewDate,
+  declineNotesHint,
+  formatDeadline,
+  heldSlot,
+  isOpenBooking,
+  matchesMother,
+  motherLabel,
+  requestedAmountLabel,
+  type MilkBankRequest as Booking,
+} from '@/lib/booking'
 import { CollectionMethodInfo } from '@/components/collection-method'
+import { ProposeDateDialog } from '@/components/propose-date-dialog'
 import { useBookingChatUnread } from '@/lib/booking-chat'
 import Link from 'next/link'
 
-interface MilkBankRequest {
-  id: number
-  request_type: 'DONOR' | 'RECIPIENT'
-  allocated_facility: number
-  allocated_facility_name: string
-  stages: string[]
-  current_stage_index: number
-  current_sub_status: keyof typeof STATUS_LABELS
-  staff_message: string
-  decline_reason: string
-  submitted_at: string
-  preferred_date: string
-  preferred_time: string
-  // When her appointment begins (epoch ms, Manila clock, from the server);
-  // null when the time can't be read, absent from an older backend.
-  appointment_start_ms?: number | null
-  attendance_confirmed: boolean
-  counter_offer_date: string | null
-  counter_offer_time: string
-  owner_email: string
-  owner_name: string
-  needs_representative: boolean
-  representative_name: string
-  representative_birthday: string | null
-  representative_contact_number: string
+// The shared booking shape (lib/booking.ts), plus what only this page reads:
+// a recipient's requirements, shown in View Details.
+interface MilkBankRequest extends Booking {
   neonate_name: string
   clinic_info: string
   has_prescription_proof: boolean
   has_cooler: boolean
   has_medical_abstract: boolean
-  requested_ml: number | null
-  requested_bottles?: number | null
   // When the representative's details were removed under the retention
   // policy (7 days after the request closed). Optional: older backends omit it.
   representative_purged_at?: string | null
-  // DONOR only -- see lib/booking.ts.
-  collection_method?: CollectionMethod | ''
-  delivery_link?: string
 }
 
 interface DonorQuestionnaire {
@@ -89,49 +77,24 @@ interface DonorQuestionnaire {
 
 type QuestionnaireState = 'idle' | 'loading' | 'loaded' | 'none' | 'error'
 
-// "No Available Doctor" is deliberately NOT here any more. It was never
-// really a reason to refuse a mother -- it is a reason to offer her a
-// different day -- but as a decline it ended the request outright, and
-// the only way back was submitting the whole thing again, questionnaire
-// and serology photo included, to change a single date. It is now the
-// "Propose New Date" button on each pending card instead, which sends a
-// counter-offer she can accept in the app (see handleSubmitCounterOffer).
-// What is left here is what a facility genuinely cannot work around.
-const DECLINE_REASONS = ['Outdated Serological Test', 'Others']
-
-// A recipient is declined for different reasons than a donor. "Not enough
-// milk available" is the one the requested-volume panel exists to support, and
-// it matches the label the Recipient Results stage already uses so the admin
-// statistics group both under one bar.
-const RECIPIENT_DECLINE_REASONS = [
-  'Not enough milk available',
-  'Incomplete or invalid requirements',
-  'Others',
-]
-
-// What the mother is told when a date is proposed. She reads this in the
-// app's "Message from Facility Team" card, directly above the Accept /
-// Choose New Time buttons -- without it the date simply moves with no
-// explanation attached.
-const NO_DOCTOR_MESSAGE =
-  'No available doctor on your requested date — we have proposed a date when one is available.'
-
+// The desk's decline reasons are DESK_DECLINE_REASONS (lib/booking.ts).
+// "No Available Doctor" is deliberately not one: it was never really a reason
+// to refuse a mother -- it is a reason to offer her a different day -- and as
+// a decline it made her submit the whole thing again, questionnaire and
+// serology photo included, to change a single date. It is the "Propose New
+// Date" button instead (components/propose-date-dialog.tsx).
+//
 // "Others" is the only reason that says nothing on its own. Every other reason
 // is shown to the mother as a plain explanation written for her (backend:
 // milkbank/results.py); for "Others" the notes ARE that explanation, so
 // picking it with an empty notes box would tell her nothing at all -- worse than not
 // offering the option. So notes become mandatory the moment it is selected.
-const OTHER_REASON = 'Others'
+const OTHER_REASON = OTHER_DECLINE_REASON
 
-const STATUS_LABELS = {
-  pending: 'Pending',
-  awaiting_attendance: 'Awaiting Attendance',
-  scheduled: 'Scheduled',
-  counter_offered: 'Counter Offer Proposed',
-  completed: 'Completed',
-  declined: 'Declined',
-  expired: 'Expired',
-}
+// Recipient requests the facility has already said yes to and not yet
+// dispensed: the milk they asked for is spoken for, so it can't also fill
+// the request being decided.
+const PROMISED_STATUSES = ['awaiting_attendance', 'scheduled', 'counter_offered']
 
 const DONOR_QUESTIONNAIRE_FIELDS: [string, string][] = [
   ['good_general_health', 'Currently in good general health'],
@@ -155,19 +118,24 @@ function formatDateOnly(date: string) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// What the mother asked for next to what the facility holds right now, so staff
-// can see at a glance whether the request can be filled before they confirm.
-// Shown for RECIPIENT requests only. `stock` is undefined until the facility
-// loads (or if it fails), in which case only the request itself is shown.
+// What the mother asked for next to what the facility can actually give her,
+// so staff can see at a glance whether the request can be filled before they
+// confirm. Shown for RECIPIENT requests only. "Free" is the stock minus what
+// other recipients the facility already accepted asked for (`promised`): that
+// milk is spoken for, even though stock only moves when it is dispensed.
+// `stock` is undefined until the facility loads (or if it fails), in which
+// case only the request itself is shown.
 function RequestedVolume({
   requestedMl,
   requestedBottles,
   stock,
+  promised,
   pending,
 }: {
   requestedMl: number | null | undefined
   requestedBottles?: number | null
   stock: number | undefined
+  promised: { ml: number; count: number }
   pending: boolean
 }) {
   // == null, not === null: undefined too, e.g. a backend not yet serving the field.
@@ -179,8 +147,9 @@ function RequestedVolume({
     )
   }
   const known = stock !== undefined
-  const exceeds = known && requestedMl > stock
-  const remaining = known ? stock - requestedMl : 0
+  const free = known ? Math.max(0, stock - promised.ml) : 0
+  const exceeds = known && requestedMl > free
+  const remaining = free - requestedMl
   return (
     <div
       className={`rounded-lg border p-3 space-y-1 ${
@@ -191,19 +160,33 @@ function RequestedVolume({
     >
       <div className="flex items-center justify-between gap-4 text-sm">
         <span className="text-muted-foreground">Milk requested</span>
-        <span className="font-semibold">{requestedAmountLabel(requestedMl, requestedBottles)}</span>
+        <span className="font-semibold whitespace-nowrap">{requestedAmountLabel(requestedMl, requestedBottles)}</span>
       </div>
       {known && (
         <>
           <div className="flex items-center justify-between gap-4 text-sm">
             <span className="text-muted-foreground">Current stock</span>
-            <span className="font-medium">{stock.toLocaleString()} mL</span>
+            <span className="font-medium whitespace-nowrap">{stock.toLocaleString()} mL</span>
           </div>
+          {pending && promised.count > 0 && (
+            <>
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  Promised to {promised.count} accepted request{promised.count === 1 ? '' : 's'}
+                </span>
+                <span className="font-medium whitespace-nowrap">− {promised.ml.toLocaleString()} mL</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-muted-foreground">Free to give</span>
+                <span className="font-semibold whitespace-nowrap">{free.toLocaleString()} mL</span>
+              </div>
+            </>
+          )}
           {pending && (
             <p className={`text-xs font-medium pt-1 ${exceeds ? 'text-destructive' : 'text-accent'}`}>
               {exceeds
-                ? `Exceeds current stock by ${(requestedMl - stock).toLocaleString()} mL — you may not be able to fill this.`
-                : `Can be filled — ${remaining.toLocaleString()} mL would remain.`}
+                ? `Exceeds the milk free to give by ${(requestedMl - free).toLocaleString()} mL — you may not be able to fill this.`
+                : `Can be filled — ${remaining.toLocaleString()} mL would remain free${promised.count > 0 ? ' after the requests already accepted' : ''}.`}
             </p>
           )}
         </>
@@ -295,16 +278,8 @@ export default function BookingRequests() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const [counterOfferRequest, setCounterOfferRequest] = useState<MilkBankRequest | null>(null)
-  const [counterOfferDate, setCounterOfferDate] = useState('')
-  const [counterOfferTime, setCounterOfferTime] = useState('')
-  const [counterOfferNotes, setCounterOfferNotes] = useState('')
-  // Dates the request's facility has marked unavailable for her pathway.
-  const [unavailableDates, setUnavailableDates] = useState<string[]>([])
-  // Days with no booking slot left at her facility (capacity is per day).
-  const [fullyBookedDates, setFullyBookedDates] = useState<string[]>([])
-  // Donor requests only: {"yyyy-mm-dd": [times full for donors]} at her facility.
-  const [fullDonorSlots, setFullDonorSlots] = useState<Record<string, string[]>>({})
+  // The booking a new date is being proposed for (components/propose-date-dialog.tsx).
+  const [proposeRequest, setProposeRequest] = useState<MilkBankRequest | null>(null)
 
   // facility id -> current stock in mL, for the requested-vs-available panel on
   // recipient cards. Empty until it loads; the panel then shows the request
@@ -348,13 +323,25 @@ export default function BookingRequests() {
 
   const query = searchTerm.trim().toLowerCase()
   const matchesSearch = (r: MilkBankRequest) =>
-    !query ||
-    r.owner_name.toLowerCase().includes(query) ||
-    r.owner_email.toLowerCase().includes(query) ||
-    r.allocated_facility_name.toLowerCase().includes(query)
+    !query || matchesMother(r, query) || r.allocated_facility_name.toLowerCase().includes(query)
+
+  // Milk already promised at a facility, leaving `request` itself out.
+  const promisedFor = (request: MilkBankRequest) => {
+    const others = requests.filter(
+      (r) =>
+        r.id !== request.id &&
+        r.request_type === 'RECIPIENT' &&
+        r.allocated_facility === request.allocated_facility &&
+        PROMISED_STATUSES.includes(r.current_sub_status) &&
+        typeof r.requested_ml === 'number'
+    )
+    return { ml: others.reduce((sum, r) => sum + (r.requested_ml ?? 0), 0), count: others.length }
+  }
 
   // Three buckets, and every request is in exactly one of them: this page
-  // answers "was this booking approved?" and nothing else.
+  // answers "was this booking approved?" and nothing else. Closed holds
+  // whatever ended without being carried out: declined, expired, or
+  // cancelled by the mother herself.
   //
   // It used to carry a fourth "Screening" tab, which was a view over the
   // confirmed set rather than a bucket of its own -- the work now lives in
@@ -364,9 +351,11 @@ export default function BookingRequests() {
   // complete record of the decision rather than a partial one.
   const searchedRequests = requests.filter(matchesSearch)
   const pendingRequests = searchedRequests.filter((r) => r.current_sub_status === 'pending')
-  const declinedRequests = searchedRequests.filter((r) => ['declined', 'expired'].includes(r.current_sub_status))
+  const declinedRequests = searchedRequests.filter(
+    (r) => r.current_sub_status !== 'completed' && CLOSED_STATUSES.includes(r.current_sub_status)
+  )
   const confirmedRequests = searchedRequests.filter(
-    (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
+    (r) => r.current_sub_status === 'completed' || (r.current_sub_status !== 'pending' && isOpenBooking(r))
   )
 
   const handleConfirm = async (request: MilkBankRequest) => {
@@ -401,7 +390,8 @@ export default function BookingRequests() {
     if (declineReason === OTHER_REASON && !declineNotes.trim()) return
     setIsSubmitting(true)
     setActionError(null)
-    const staff_message = declineNotes ? `${declineReason} — ${declineNotes}` : declineReason
+    const notes = declineNotes.trim()
+    const staff_message = notes ? `${declineReason} — ${notes}` : declineReason
     try {
       const res = await apiFetch(`/milkbank/requests/${declineRequest.id}/decline/`, {
         method: 'POST',
@@ -422,102 +412,19 @@ export default function BookingRequests() {
     }
   }
 
-  const handleOpenCounterOffer = (request: MilkBankRequest) => {
-    setCounterOfferRequest(request)
-    setCounterOfferDate('')
-    setCounterOfferTime('')
-    setCounterOfferNotes('')
-    setUnavailableDates([])
-    setFullyBookedDates([])
-    setFullDonorSlots({})
+  const handleOpenPropose = (request: MilkBankRequest) => {
     setActionError(null)
-    // The facility publishes its unavailable days per pathway (the same list
-    // the mother's own calendar greys out). Loaded as the dialog opens; until
-    // it arrives, weekends and past dates are already blocked, and if it
-    // fails the dialog still works on those rules alone.
-    apiFetch(`/milkbank/facilities/${request.allocated_facility}/`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((facility) => {
-        if (!facility) return
-        setUnavailableDates(
-          request.request_type === 'DONOR'
-            ? facility.unavailable_donor_dates ?? []
-            : facility.unavailable_recipient_dates ?? []
-        )
-        // Her own date stays offerable (a different time): her slot there is
-        // hers, so the backend does not count it against her.
-        const dayFull: string[] = (facility.fully_booked_dates ?? []).filter(
-          (d: string) => d !== request.preferred_date
-        )
-        // A donor also can't be offered an hour the lab is full at, or a day
-        // where every hour is (only when the facility limits donor slots).
-        if (request.request_type === 'DONOR') {
-          setFullDonorSlots(facility.full_donor_slots ?? {})
-          setFullyBookedDates([...dayFull, ...(facility.donor_fully_booked_dates ?? [])])
-        } else {
-          setFullyBookedDates(dayFull)
-        }
-      })
-      .catch(() => {})
+    setProposeRequest(request)
   }
 
-  // What she asked for -- greyed out in the picker, since offering it back
-  // would not be a counter-offer.
-  const requestedSlot = useMemo(
-    () => ({
-      date: counterOfferRequest?.preferred_date ?? '',
-      time: counterOfferRequest?.preferred_time ?? '',
-    }),
-    [counterOfferRequest]
-  )
-
-  // A time that was fine when picked can stop being: she changed the date,
-  // or the clock moved past it while the dialog sat open. Clear it rather
-  // than leave a selected-but-greyed time that could still be submitted.
-  useEffect(() => {
-    if (
-      counterOfferDate &&
-      counterOfferTime &&
-      slotBlockedReason(counterOfferTime, counterOfferDate, requestedSlot, new Date(), fullDonorSlots[counterOfferDate])
-    ) {
-      setCounterOfferTime('')
-    }
-  }, [counterOfferDate, counterOfferTime, requestedSlot, fullDonorSlots])
-
   /**
-   * Offers the mother a different appointment instead of refusing her.
-   *
-   * The request stays alive the whole way through: it moves to
-   * "Counter Offer Proposed" (still holding her slot at this facility,
-   * with no countdown running against her), and in the app she gets
-   * Accept or Choose New Time. Choosing a new time puts her back in this
-   * desk's Pending tab with her new slot and everything she already
-   * submitted still attached -- no re-application either way.
+   * The offer went out (components/propose-date-dialog.tsx): the request is
+   * now "Counter Offer Proposed", holding the offered slot, and she has
+   * Accept or Choose New Time in the app -- no re-application either way.
    */
-  const handleSubmitCounterOffer = async () => {
-    if (!counterOfferRequest || !counterOfferDate || !counterOfferTime) return
-    setIsSubmitting(true)
-    setActionError(null)
-    const notes = counterOfferNotes.trim()
-    const staff_message = notes ? `${NO_DOCTOR_MESSAGE} ${notes}` : NO_DOCTOR_MESSAGE
-    try {
-      const res = await apiFetch(`/milkbank/requests/${counterOfferRequest.id}/propose-counter-offer/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          counter_offer_date: counterOfferDate,
-          counter_offer_time: counterOfferTime,
-          staff_message,
-        }),
-      })
-      if (!res.ok) throw new Error((await res.json())?.detail || 'Could not propose a new date')
-      const updated = await res.json()
-      setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-      setCounterOfferRequest(null)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not propose a new date')
-    } finally {
-      setIsSubmitting(false)
-    }
+  const handleProposed = (updated: Booking) => {
+    setRequests((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)))
+    setProposeRequest(null)
   }
 
   const handleOpenDetails = async (request: MilkBankRequest) => {
@@ -576,6 +483,29 @@ export default function BookingRequests() {
       variant === 'pending' &&
       typeof request.appointment_start_ms === 'number' &&
       request.appointment_start_ms <= Date.now()
+    // The facility has since closed the day she holds: she needs a new date
+    // first (the server refuses accepting it as it stands, and her confirming).
+    const dayClosed = isOpenBooking(request) && request.appointment_day_closed === true
+    // A donor's screening answers never arrived (the upload failed after
+    // booking): she can send them again from the app; until then the server
+    // refuses accepting her.
+    const screeningMissing =
+      variant === 'pending' && request.request_type === 'DONOR' && request.has_questionnaire === false
+    const confirmBlockedBy = appointmentPassed
+      ? 'Her appointment time has passed: propose a new date or decline'
+      : dayClosed
+      ? 'The facility is closed on her date: propose a new date'
+      : screeningMissing
+      ? 'Her screening answers have not arrived yet'
+      : undefined
+    const waitingOnHer =
+      variant === 'confirmed' &&
+      (request.current_sub_status === 'counter_offered' || request.current_sub_status === 'awaiting_attendance')
+    // A new date for an accepted booking from here: one waiting on her, or one
+    // on a day since closed. A confirmed appointment that just needs moving
+    // is moved from its process queue.
+    const showPropose =
+      variant === 'confirmed' && canProposeNewDate(request) && (waitingOnHer || dayClosed)
     const borderClasses =
       variant === 'pending'
         ? 'border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20'
@@ -588,8 +518,8 @@ export default function BookingRequests() {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg">{request.owner_name || request.owner_email}</CardTitle>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <CardTitle className="text-lg">{motherLabel(request)}</CardTitle>
                 <Badge variant={request.request_type === 'DONOR' ? 'default' : 'secondary'}>
                   {request.request_type === 'DONOR' ? 'Donor Screening' : 'Recipient Request'}
                 </Badge>
@@ -610,10 +540,12 @@ export default function BookingRequests() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2 p-3 rounded-lg">
-            <div className="flex items-center gap-2 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{request.owner_email}</span>
-            </div>
+            {!request.owner_deleted && (
+              <div className="flex items-center gap-2 text-sm">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span>{request.owner_email}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm">
               <Building2 className="h-4 w-4 text-muted-foreground" />
               <span>{request.allocated_facility_name}</span>
@@ -629,11 +561,18 @@ export default function BookingRequests() {
               requestedMl={request.requested_ml}
               requestedBottles={request.requested_bottles}
               stock={stockByFacility[request.allocated_facility]}
+              promised={promisedFor(request)}
               pending={variant === 'pending'}
             />
           )}
 
-          {variant === 'declined' && (request.staff_message || request.decline_reason) && (
+          {variant === 'declined' && request.current_sub_status === 'cancelled' && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              She cancelled this booking herself in the app. Its slot was freed at once.
+            </div>
+          )}
+
+          {variant === 'declined' && request.current_sub_status === 'declined' && (request.staff_message || request.decline_reason) && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Decline Reason</p>
               <p className="text-sm font-medium text-destructive">
@@ -647,6 +586,38 @@ export default function BookingRequests() {
               Her appointment time ({formatDateTime(request.preferred_date, request.preferred_time)}) has passed
               without an answer, so it can&apos;t be confirmed as it is. Propose a new date (she keeps her
               application), or decline it. Left alone, the request expires on its own.
+            </div>
+          )}
+
+          {dayClosed && !appointmentPassed && (
+            <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-200">
+              <strong className="font-semibold">Closed day.</strong> The facility is closed on her appointment date
+              ({formatDateTime(heldSlot(request).date, heldSlot(request).time)}), and she has been told a new date
+              is coming. Propose one {request.current_sub_status === 'pending' ? 'before confirming' : 'so she can confirm it'}.
+            </div>
+          )}
+
+          {screeningMissing && (
+            <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-200">
+              <strong className="font-semibold">Screening answers missing.</strong> Her health screening answers
+              didn&apos;t reach KalingApp, so this request can&apos;t be confirmed yet. She can send them again from
+              Booking Status in her app. If they don&apos;t come, decline it with &ldquo;Screening answers missing&rdquo;.
+            </div>
+          )}
+
+          {waitingOnHer && (
+            <div className="flex items-start gap-2 rounded-lg border border-border border-dashed p-3 text-sm text-muted-foreground">
+              <Hourglass className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                {request.current_sub_status === 'counter_offered'
+                  ? `Waiting for her answer to ${formatDateTime(request.counter_offer_date ?? '', request.counter_offer_time)}`
+                  : request.request_type === 'DONOR' && request.collection_method === 'drop_off'
+                  ? 'Waiting for her courier delivery link'
+                  : 'Waiting for her to confirm she is coming'}
+                {request.response_deadline
+                  ? ` — until ${formatDeadline(request.response_deadline)}, then it expires on its own.`
+                  : '.'}
+              </span>
             </div>
           )}
 
@@ -684,8 +655,8 @@ export default function BookingRequests() {
                 <Button
                   className="flex-1 min-w-[140px] bg-primary hover:bg-primary/90 text-white"
                   onClick={() => handleConfirm(request)}
-                  disabled={appointmentPassed}
-                  title={appointmentPassed ? 'Her appointment time has passed: propose a new date or decline' : undefined}
+                  disabled={!!confirmBlockedBy}
+                  title={confirmBlockedBy}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Confirm
@@ -696,8 +667,8 @@ export default function BookingRequests() {
                     move one day. */}
                 <Button
                   variant="outline"
-                  className="flex-1 min-w-[140px] border-accent text-accent hover:bg-light-pink/30"
-                  onClick={() => handleOpenCounterOffer(request)}
+                  className="flex-1 min-w-[180px] border-accent text-accent hover:bg-light-pink/30"
+                  onClick={() => handleOpenPropose(request)}
                 >
                   <CalendarPlus className="h-4 w-4 mr-2" />
                   Propose New Date
@@ -711,6 +682,26 @@ export default function BookingRequests() {
                   Decline
                 </Button>
               </>
+            )}
+            {showPropose && (
+              <Button
+                variant="outline"
+                className="flex-1 min-w-[180px] border-accent text-accent hover:bg-light-pink/30"
+                onClick={() => handleOpenPropose(request)}
+              >
+                <CalendarPlus className="h-4 w-4 mr-2" />
+                {request.current_sub_status === 'counter_offered' ? 'Propose Another Date' : 'Propose New Date'}
+              </Button>
+            )}
+            {variant === 'confirmed' && request.current_sub_status === 'counter_offered' && (
+              <Button
+                variant="outline"
+                className="flex-1 min-w-[140px]"
+                onClick={() => handleOpenDecline(request)}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Decline
+              </Button>
             )}
           </div>
 
@@ -774,7 +765,7 @@ export default function BookingRequests() {
       >
         <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{detailsRequest?.owner_name || detailsRequest?.owner_email}</DialogTitle>
+            <DialogTitle>{detailsRequest ? motherLabel(detailsRequest) : ''}</DialogTitle>
             <DialogDescription>
               {detailsRequest?.request_type === 'DONOR' ? 'Donor Screening' : 'Recipient Request'} &middot;{' '}
               {formatDateTime(detailsRequest?.preferred_date, detailsRequest?.preferred_time)}
@@ -828,6 +819,7 @@ export default function BookingRequests() {
                       requestedMl={detailsRequest.requested_ml}
                       requestedBottles={detailsRequest.requested_bottles}
                       stock={stockByFacility[detailsRequest.allocated_facility]}
+                      promised={promisedFor(detailsRequest)}
                       pending={detailsRequest.current_sub_status === 'pending'}
                     />
                     {detailsRequest.clinic_info && (
@@ -917,7 +909,13 @@ export default function BookingRequests() {
                     </p>
                   )}
                   {questionnaireState === 'none' && (
-                    <p className="text-sm text-muted-foreground pl-1">No questionnaire submitted yet.</p>
+                    <p className="text-sm text-muted-foreground pl-1">
+                      {detailsRequest.owner_deleted
+                        ? 'Her screening answers were deleted with her account.'
+                        : isOpenBooking(detailsRequest)
+                        ? "Her screening answers haven't arrived yet. She can send them again from Booking Status in her app."
+                        : 'No screening answers were submitted.'}
+                    </p>
                   )}
                   {questionnaireState === 'error' && (
                     <p className="text-sm text-destructive pl-1">Could not load questionnaire.</p>
@@ -1010,7 +1008,10 @@ export default function BookingRequests() {
           <DialogHeader>
             <DialogTitle>Decline Request</DialogTitle>
             <DialogDescription>
-              Decline the request from {declineRequest?.owner_name || declineRequest?.owner_email}
+              Decline the request from {declineRequest ? motherLabel(declineRequest) : ''}
+              {declineRequest?.current_sub_status === 'counter_offered'
+                ? '. The date you proposed is withdrawn, and the request ends here.'
+                : ''}
             </DialogDescription>
           </DialogHeader>
 
@@ -1025,7 +1026,7 @@ export default function BookingRequests() {
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select a reason</option>
-                {(declineRequest?.request_type === 'RECIPIENT' ? RECIPIENT_DECLINE_REASONS : DECLINE_REASONS).map((reason) => (
+                {(declineRequest?.request_type === 'RECIPIENT' ? DESK_DECLINE_REASONS.recipient : DESK_DECLINE_REASONS.donor).map((reason) => (
                   <option key={reason} value={reason}>
                     {reason}
                   </option>
@@ -1078,115 +1079,11 @@ export default function BookingRequests() {
       </Dialog>
 
       {/* Propose New Date (counter-offer) Dialog */}
-      <Dialog
-        open={!!counterOfferRequest}
-        onOpenChange={(open) => !open && setCounterOfferRequest(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Propose a New Date</DialogTitle>
-            <DialogDescription>
-              Offer {counterOfferRequest?.owner_name || counterOfferRequest?.owner_email} another
-              date. Her request stays open.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
-              <span className="text-muted-foreground">She asked for </span>
-              <span className="font-medium">
-                {formatDateTime(counterOfferRequest?.preferred_date, counterOfferRequest?.preferred_time)}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Date a doctor is available <span className="text-destructive">*</span>
-              </label>
-              <DateCalendar
-                value={counterOfferDate}
-                onChange={setCounterOfferDate}
-                blockedReason={(date) => dateBlockedReason(date, unavailableDates, new Date(), fullyBookedDates)}
-                markedDate={requestedSlot.date}
-                markedLabel="The date she asked for"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Time <span className="text-destructive">*</span>
-              </label>
-              {!counterOfferDate && (
-                <p className="text-xs text-muted-foreground">Pick a date first.</p>
-              )}
-              <div className="grid grid-cols-3 gap-2">
-                {TIME_SLOTS.map((slot) => {
-                  const reason = counterOfferDate
-                    ? slotBlockedReason(slot, counterOfferDate, requestedSlot, new Date(), fullDonorSlots[counterOfferDate])
-                    : null
-                  const blocked = reason !== null || !counterOfferDate
-                  return (
-                    <button
-                      key={slot}
-                      type="button"
-                      disabled={blocked}
-                      title={reason ?? undefined}
-                      onClick={() => setCounterOfferTime(slot)}
-                      className={
-                        counterOfferTime === slot
-                          ? 'rounded-lg border border-primary bg-primary text-white text-sm py-2 font-medium'
-                          : blocked
-                          ? 'rounded-lg border border-border bg-muted/60 text-muted-foreground/40 text-sm py-2 cursor-not-allowed line-through decoration-muted-foreground/30'
-                          : 'rounded-lg border border-border bg-background text-sm py-2 hover:bg-light-pink/30'
-                      }
-                    >
-                      {slot}
-                    </button>
-                  )
-                })}
-              </div>
-              {counterOfferDate && (
-                <p className="text-xs text-muted-foreground">
-                  Greyed-out times have passed, are the time she already asked for, or are full for donors.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Notes <span className="font-normal text-muted-foreground">(Optional)</span>
-              </label>
-              <textarea
-                value={counterOfferNotes}
-                onChange={(e) => setCounterOfferNotes(e.target.value)}
-                placeholder="Anything else she should know — the mother reads this..."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={2}
-              />
-              <p className="text-xs text-muted-foreground">
-                She is told a doctor was not available on her date whether or not you add notes.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCounterOfferRequest(null)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-primary hover:bg-primary/90 text-white"
-              onClick={handleSubmitCounterOffer}
-              disabled={!counterOfferDate || !counterOfferTime || isSubmitting}
-            >
-              {isSubmitting ? 'Sending...' : 'Send to Mother'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProposeDateDialog
+        request={proposeRequest}
+        onClose={() => setProposeRequest(null)}
+        onProposed={handleProposed}
+      />
 
       {isLoading && (
         <Card>
@@ -1214,7 +1111,7 @@ export default function BookingRequests() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pending">Pending ({pendingRequests.length})</TabsTrigger>
             <TabsTrigger value="confirmed">Confirmed ({confirmedRequests.length})</TabsTrigger>
-            <TabsTrigger value="denied">Denied ({declinedRequests.length})</TabsTrigger>
+            <TabsTrigger value="denied">Closed ({declinedRequests.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="space-y-4 mt-6">
@@ -1262,7 +1159,7 @@ export default function BookingRequests() {
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center text-muted-foreground">
-                  {query ? 'No denied requests match your search' : 'No denied requests'}
+                  {query ? 'No closed requests match your search' : 'No declined, expired or cancelled requests'}
                 </CardContent>
               </Card>
             )}

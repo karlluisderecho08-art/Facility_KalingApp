@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, X, Mail, Building2, CalendarClock, Loader2, Search, Hourglass, MessageCircle } from 'lucide-react'
+import { Check, X, Mail, Building2, CalendarClock, CalendarPlus, Loader2, Search, Hourglass, MessageCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,16 +17,20 @@ import {
 } from '@/components/ui/dialog'
 import { apiFetch } from '@/lib/api'
 import { CollectionMethodInfo } from '@/components/collection-method'
+import { ProposeDateDialog } from '@/components/propose-date-dialog'
 import { useBookingChatUnread } from '@/lib/booking-chat'
 import {
   MilkBankRequest,
   HEALTH_DECLINE_REASONS,
   OTHER_DECLINE_REASON,
+  canProposeNewDate,
   declineNotesHint,
   STATUS_LABELS,
   formatDateTime,
   formatSubmitted,
   isOnStage,
+  matchesMother,
+  motherLabel,
   requestedAmountLabel,
 } from '@/lib/booking'
 
@@ -102,6 +106,10 @@ export function ProcessQueue({
   const [declineNotes, setDeclineNotes] = useState('')
   const [declineError, setDeclineError] = useState<string | null>(null)
   const [isDeclining, setIsDeclining] = useState(false)
+  // A confirmed appointment that has to move -- a closed day, no doctor after
+  // all. Only while it is still ahead (lib/booking.ts canProposeNewDate);
+  // once she accepts, she leaves this queue to confirm the new date.
+  const [proposeRequest, setProposeRequest] = useState<MilkBankRequest | null>(null)
   const { byRequest: unreadChats } = useBookingChatUnread()
 
   const loadRequests = useCallback(async () => {
@@ -125,12 +133,7 @@ export function ProcessQueue({
   const query = searchTerm.trim().toLowerCase()
   const visible = requests
     .filter((r) => isOnStage(r, requestType, stage))
-    .filter(
-      (r) =>
-        !query ||
-        r.owner_name.toLowerCase().includes(query) ||
-        r.owner_email.toLowerCase().includes(query)
-    )
+    .filter((r) => matchesMother(r, query))
     .sort((a, b) => a.preferred_date.localeCompare(b.preferred_date))
 
   const handleAdvance = async (request: MilkBankRequest) => {
@@ -275,12 +278,20 @@ export function ProcessQueue({
         </Card>
       ) : (
         <div className="space-y-4">
-          {visible.map((request) => (
+          {visible.map((request) => {
+            // Only a Scheduled booking moves through its phases. One whose
+            // new date is waiting on her answer sits here until she decides.
+            const offered = request.current_sub_status === 'counter_offered'
+            const rowAction: ProcessAction = request.current_sub_status === 'scheduled' ? action : 'wait'
+            const rowWaitingNote = offered
+              ? `A new date was proposed (${formatDateTime(request.counter_offer_date ?? '', request.counter_offer_time)}). Waiting for her answer; if she accepts, she confirms it again.`
+              : waitingNote
+            return (
             <Card key={request.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <CardTitle className="text-lg">
-                    {request.owner_name || request.owner_email}
+                    {motherLabel(request)}
                   </CardTitle>
                   <Badge variant={request.request_type === 'DONOR' ? 'default' : 'secondary'}>
                     {request.request_type === 'DONOR' ? 'Donor' : 'Recipient'}
@@ -311,6 +322,13 @@ export function ProcessQueue({
 
                 <CollectionMethodInfo request={request} />
 
+                {request.appointment_day_closed && (
+                  <div role="note" className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-200">
+                    <strong className="font-semibold">Closed day.</strong> The facility is closed on her appointment
+                    date, and she has been told a new date is coming. Propose one below.
+                  </div>
+                )}
+
                 {request.needs_representative && request.representative_name && (
                   <div className="rounded-lg border border-border p-3 space-y-1">
                     <p className="text-xs text-muted-foreground">Pickup representative</p>
@@ -324,7 +342,7 @@ export function ProcessQueue({
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {action === 'advance' && (
+                  {rowAction === 'advance' && (
                     <Button
                       className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
                       onClick={() => handleAdvance(request)}
@@ -339,7 +357,7 @@ export function ProcessQueue({
                     </Button>
                   )}
 
-                  {action === 'complete' && (
+                  {rowAction === 'complete' && (
                     <Button
                       className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
                       onClick={() => {
@@ -350,6 +368,20 @@ export function ProcessQueue({
                     >
                       <Check className="h-4 w-4 mr-2" />
                       Record amount &amp; complete
+                    </Button>
+                  )}
+
+                  {canProposeNewDate(request) && (
+                    <Button
+                      variant="outline"
+                      className="min-w-[180px] border-accent text-accent hover:bg-light-pink/30"
+                      onClick={() => {
+                        setActionError(null)
+                        setProposeRequest(request)
+                      }}
+                    >
+                      <CalendarPlus className="h-4 w-4 mr-2" />
+                      {offered ? 'Propose Another Date' : 'Propose New Date'}
                     </Button>
                   )}
 
@@ -367,7 +399,7 @@ export function ProcessQueue({
                     )}
                   </Button>
 
-                  {action !== 'wait' && declineReasons.length > 0 && (
+                  {rowAction !== 'wait' && declineReasons.length > 0 && (
                     <Button
                       variant="outline"
                       className="min-w-[120px] border-destructive/40 text-destructive hover:bg-destructive/10"
@@ -379,15 +411,16 @@ export function ProcessQueue({
                   )}
                 </div>
 
-                {action === 'wait' && (
+                {rowAction === 'wait' && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground rounded-lg border border-border border-dashed p-3">
                     <Hourglass className="h-4 w-4 shrink-0" />
-                    <span>{waitingNote}</span>
+                    <span>{rowWaitingNote}</span>
                   </div>
                 )}
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -396,7 +429,7 @@ export function ProcessQueue({
           <DialogHeader>
             <DialogTitle>Decline this request?</DialogTitle>
             <DialogDescription>
-              {declineRequest?.owner_name || declineRequest?.owner_email} will be told her request
+              {declineRequest ? motherLabel(declineRequest) : ''} will be told her request
               was declined and the booking ends here. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -463,7 +496,7 @@ export function ProcessQueue({
           <DialogHeader>
             <DialogTitle>Record the amount</DialogTitle>
             <DialogDescription>
-              {completeRequest?.owner_name || completeRequest?.owner_email}
+              {completeRequest ? motherLabel(completeRequest) : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -500,6 +533,17 @@ export function ProcessQueue({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProposeDateDialog
+        request={proposeRequest}
+        onClose={() => setProposeRequest(null)}
+        onProposed={(updated) => {
+          // Now "Counter Offer Proposed": it leaves this queue (isOnStage
+          // still matches the stage, so replace it to show the new status).
+          setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+          setProposeRequest(null)
+        }}
+      />
     </div>
   )
 }

@@ -61,6 +61,17 @@ export interface MilkBankRequest {
   pickup_landmark?: string
   pickup_latitude?: number | null
   pickup_longitude?: number | null
+  // When the request expires if nobody acts: the facility's 8 business hours
+  // while pending, hers to confirm or answer a proposed date. null otherwise.
+  response_deadline?: string | null
+  // A completed booking kept after its mother deleted her account: no name or
+  // email any more, only a reference shared by all her kept bookings.
+  owner_deleted?: boolean
+  former_owner_ref?: string
+  // DONOR only (null for a recipient): whether her screening answers arrived.
+  has_questionnaire?: boolean | null
+  // Open bookings only: the day it holds is now closed at this facility.
+  appointment_day_closed?: boolean
 }
 
 export type CollectionMethod = 'pickup' | 'walk_in' | 'drop_off'
@@ -78,9 +89,73 @@ export const COLLECTION_METHOD_HINTS: Record<CollectionMethod, string> = {
   drop_off: 'She sends the milk by courier. Track it with her delivery booking link.',
 }
 
+/** The statuses a booking never leaves. */
+export const CLOSED_STATUSES: readonly string[] = ['completed', 'declined', 'expired', 'cancelled']
+
 /** True when this request is still in progress (its chat is open). */
-export function isOpenBooking(request: Pick<MilkBankRequest, 'current_sub_status'>): boolean {
-  return !['completed', 'declined', 'expired'].includes(request.current_sub_status)
+export function isOpenBooking(request: { current_sub_status: string }): boolean {
+  return !CLOSED_STATUSES.includes(request.current_sub_status)
+}
+
+/**
+ * Who the booking is for, as staff see it. A completed booking kept after its
+ * mother deleted her account has no name or email any more -- only the
+ * reference all her kept bookings share.
+ */
+export function motherLabel(
+  request: Pick<MilkBankRequest, 'owner_name' | 'owner_email'> & { owner_deleted?: boolean; former_owner_ref?: string }
+): string {
+  if (request.owner_deleted) {
+    return request.former_owner_ref ? `Deleted account (${request.former_owner_ref})` : 'Deleted account'
+  }
+  return request.owner_name || request.owner_email
+}
+
+/** True when a search matches this booking's mother (null-safe for kept, anonymised bookings). */
+export function matchesMother(
+  request: Pick<MilkBankRequest, 'owner_name' | 'owner_email'> & { owner_deleted?: boolean; former_owner_ref?: string },
+  query: string
+): boolean {
+  if (!query) return true
+  return [request.owner_name, request.owner_email, motherLabel(request)].some((text) =>
+    (text || '').toLowerCase().includes(query)
+  )
+}
+
+/**
+ * The slot a booking holds at the facility: the offered one while a proposed
+ * date waits for her answer, otherwise the one she booked (backend:
+ * scheduling.held_day / capacity.holding_requests).
+ */
+export function heldSlot(
+  request: Pick<MilkBankRequest, 'current_sub_status' | 'preferred_date' | 'preferred_time' | 'counter_offer_date' | 'counter_offer_time'>
+): { date: string; time: string } {
+  if (request.current_sub_status === 'counter_offered' && request.counter_offer_date) {
+    return { date: request.counter_offer_date, time: request.counter_offer_time }
+  }
+  return { date: request.preferred_date, time: request.preferred_time }
+}
+
+/**
+ * Whether staff can still propose a new date: before the facility has
+ * answered, while it waits on her, or -- once confirmed -- while her
+ * appointment is still ahead (a donor's first step after confirming, a
+ * recipient's review or pickup). The same rule the backend enforces
+ * (scheduling.appointment_still_ahead).
+ */
+export function canProposeNewDate(request: MilkBankRequest): boolean {
+  const status = request.current_sub_status
+  if (status === 'pending' || status === 'awaiting_attendance' || status === 'counter_offered') return true
+  if (status !== 'scheduled') return false
+  const stage = request.stages[request.current_stage_index]
+  if (request.request_type === 'RECIPIENT') return stage === 'Status' || stage === 'Results'
+  return request.current_stage_index === request.stages.indexOf('Booking Confirmation') + 1
+}
+
+/** "Nov 20, 3:00 PM" -- a deadline on the browser's clock (the facility's own, in Manila). */
+export function formatDeadline(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 /** "3 bottles (300 mL)" when she asked in bottles, else "250 mL". */
@@ -98,6 +173,7 @@ export type BookingStatus =
   | 'completed'
   | 'declined'
   | 'expired'
+  | 'cancelled'
 
 export const STATUS_LABELS: Record<BookingStatus, string> = {
   pending: 'Pending',
@@ -107,6 +183,7 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
   completed: 'Completed',
   declined: 'Declined',
   expired: 'Expired',
+  cancelled: 'Cancelled by Mother',
 }
 
 /**
@@ -164,17 +241,34 @@ export const RECIPIENT_STAGES = {
 // new bar in the "top reasons" chart rather than merging with the old one.
 export const OTHER_DECLINE_REASON = 'Others'
 
+// A no-show, at any step she has to turn up for (or, for a Pick up, be home
+// for). Its own reason so missed appointments can be counted, instead of
+// disappearing into "Others".
+export const MISSED_APPOINTMENT_REASON = 'Missed the appointment'
+
 export const DECLINE_REASONS = {
   donorCounseling: [
     'Failed blood test',
     'Failed physical examination',
     'Did not pass counseling',
+    MISSED_APPOINTMENT_REASON,
     OTHER_DECLINE_REASON,
   ],
-  donorCollection: ['Failed breastmilk collection', OTHER_DECLINE_REASON],
+  donorCollection: ['Failed breastmilk collection', MISSED_APPOINTMENT_REASON, OTHER_DECLINE_REASON],
   donorResults: ['Milk did not meet quality standards', OTHER_DECLINE_REASON],
   recipientReview: ['Incomplete or invalid requirements', OTHER_DECLINE_REASON],
-  recipientResults: ['Not enough milk available', OTHER_DECLINE_REASON],
+  recipientResults: ['Not enough milk available', MISSED_APPOINTMENT_REASON, OTHER_DECLINE_REASON],
+} as const
+
+// The Booking Request desk's own reasons (pending requests, and proposed
+// dates she hasn't answered). "No Available Doctor" is deliberately not one:
+// that is a reason to propose another date, not to refuse her. A donor whose
+// screening answers never arrived can be declined with "Screening answers
+// missing", which tells her to send a new request and answer them again.
+export const SCREENING_MISSING_REASON = 'Screening answers missing'
+export const DESK_DECLINE_REASONS = {
+  donor: ['Outdated Serological Test', SCREENING_MISSING_REASON, OTHER_DECLINE_REASON],
+  recipient: ['Not enough milk available', 'Incomplete or invalid requirements', OTHER_DECLINE_REASON],
 } as const
 
 // What the MOTHER is shown when a request is declined (backend:
@@ -247,7 +341,7 @@ export function isOnStage(
   stage: string
 ): boolean {
   if (request.request_type !== requestType) return false
-  if (['declined', 'expired', 'completed'].includes(request.current_sub_status)) {
+  if (CLOSED_STATUSES.includes(request.current_sub_status)) {
     return false
   }
   return request.stages[request.current_stage_index] === stage

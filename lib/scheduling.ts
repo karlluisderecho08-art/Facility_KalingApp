@@ -6,14 +6,17 @@
 // makes sense here: the slot she already asked for is not a counter-offer.
 //
 //   - Past dates are out.
-//   - Weekends are out (the facility works Monday to Friday).
+//   - Weekends are out (the facility works Monday to Friday), and so are
+//     Philippine holidays (Facility.holiday_dates, from the backend's
+//     business_hours.philippine_holidays).
 //   - Dates the facility has marked unavailable for her pathway are out
 //     (Facility.unavailable_donor_dates / unavailable_recipient_dates).
 //   - Days with no booking slot left are out (Facility.fully_booked_dates --
 //     capacity is bookings per day). Her own booked date never is: her own
 //     slot does not count against her, so a different time that day is fine.
 //   - On today's date, a time that has already passed is out.
-//   - On the date she asked for, the time she asked for is out.
+//   - On the date she asked for, the time she asked for is out -- and so is
+//     the time already offered to her, when replacing an offer.
 //   - For a donor, at a facility that limits donor bookings per time slot (the
 //     lab), a time already at that limit is out (Facility.full_donor_slots),
 //     and so is a day on which every time is (donor_fully_booked_dates).
@@ -62,7 +65,8 @@ export function dateBlockedReason(
   dateString: string,
   unavailableDates: readonly string[],
   now: Date = new Date(),
-  fullyBookedDates: readonly string[] = []
+  fullyBookedDates: readonly string[] = [],
+  holidayDates: readonly string[] = []
 ): string | null {
   if (dateString < toDateString(now)) return 'This date has passed'
   // Today, once the last slot has started, has nothing left to offer.
@@ -70,7 +74,8 @@ export function dateBlockedReason(
     return 'No times left today'
   }
   if (isWeekend(dateString)) return 'Weekends are not available'
-  if (unavailableDates.includes(dateString)) return 'The facility is unavailable this day'
+  if (holidayDates.includes(dateString)) return 'Holiday: the facility is closed'
+  if (unavailableDates.includes(dateString)) return 'The facility is closed this day'
   if (fullyBookedDates.includes(dateString)) return 'Fully booked'
   return null
 }
@@ -81,10 +86,14 @@ export function slotBlockedReason(
   dateString: string,
   requested: { date: string; time: string },
   now: Date = new Date(),
-  fullTimes: readonly string[] = []
+  fullTimes: readonly string[] = [],
+  alreadyOffered: { date: string; time: string } | null = null
 ): string | null {
   if (dateString === requested.date && slot === requested.time) {
     return 'This is the time she already asked for'
+  }
+  if (alreadyOffered && dateString === alreadyOffered.date && slot === alreadyOffered.time) {
+    return 'This is the time already offered to her'
   }
   if (dateString === toDateString(now) && hasStarted(slot, now)) return 'This time has already passed'
   if (fullTimes.includes(slot)) return 'Fully booked for donors at this time'

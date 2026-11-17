@@ -13,7 +13,7 @@
 // is not part of the bundle staff download just to open a page.
 
 import { jsPDF } from 'jspdf'
-import { STATUS_LABELS, type BookingStatus, type MilkBankRequest } from '@/lib/booking'
+import { STATUS_LABELS, motherLabel, type BookingStatus, type MilkBankRequest } from '@/lib/booking'
 import {
   type FacilityRecord,
   type MotherRecord,
@@ -376,7 +376,7 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
           upcoming,
           'No upcoming days.'
         )
-        note('A booking holds a slot on the day it is for from the moment it is submitted, until declined or expired.')
+        note('A booking holds a slot on the day it is for from the moment it is submitted, until declined, expired or cancelled.')
         y += 3
       }
 
@@ -458,8 +458,8 @@ export function buildReportPdf(input: ReportInput, generatedAt: Date = new Date(
       table(
         [
           { header: 'Completed', width: 0.14, value: (r) => shortDate(r.completed_at) },
-          { header: 'Mother', width: 0.21, value: (r) => r.owner_name || '-' },
-          { header: 'Email', width: 0.27, value: (r) => r.owner_email },
+          { header: 'Mother', width: 0.21, value: (r) => (r.owner_deleted ? motherLabel(r) : r.owner_name || '-') },
+          { header: 'Email', width: 0.27, value: (r) => (r.owner_deleted ? '(account deleted)' : r.owner_email) },
           { header: 'Type', width: 0.11, value: (r) => (r.request_type === 'DONOR' ? 'Donor' : 'Recipient') },
           { header: 'Appointment', width: 0.13, value: (r) => shortDate(r.preferred_date) },
           { header: 'Amount', width: 0.14, align: 'right', bold: true, value: (r) => ml(r.amount_ml) },

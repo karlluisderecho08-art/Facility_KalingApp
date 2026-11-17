@@ -8,6 +8,7 @@ import { CONSOLE_VERSION } from '@/lib/version'
 import {
   BarChart3,
   Calendar,
+  CalendarOff,
   Droplets,
   FileText,
   HeartHandshake,
@@ -73,6 +74,9 @@ interface NavSection {
 const navItems: NavSection[] = [
   { label: 'Dashboard', href: '/admin', icon: BarChart3 },
   { label: 'Booking Request', href: '/admin/bookings', icon: Calendar },
+  // Days this facility can't take appointments (milkbank/closures.py on the
+  // backend): mothers can't book them, and bookings on them need a new date.
+  { label: 'Closed Days', href: '/admin/closed-days', icon: CalendarOff },
   {
     label: 'Donor Process',
     icon: Droplets,

@@ -13,6 +13,8 @@ import {
   formatCompletedAt,
   formatDateTime,
   isFinished,
+  matchesMother,
+  motherLabel,
 } from '@/lib/booking'
 import { generateReport } from '@/lib/reports'
 
@@ -52,12 +54,7 @@ export default function FinishedTransactionsPage() {
   const query = searchTerm.trim().toLowerCase()
   const finished = requests
     .filter(isFinished)
-    .filter(
-      (r) =>
-        !query ||
-        r.owner_name.toLowerCase().includes(query) ||
-        r.owner_email.toLowerCase().includes(query)
-    )
+    .filter((r) => matchesMother(r, query))
     // Most recently completed first -- completed_at is when the
     // transaction actually closed, not preferred_date (the appointment
     // slot), so two bookings for the same day still sort correctly.
@@ -142,9 +139,9 @@ export default function FinishedTransactionsPage() {
           {finished.map((request) => (
             <Card key={request.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <CardTitle className="text-lg">
-                    {request.owner_name || request.owner_email}
+                    {motherLabel(request)}
                   </CardTitle>
                   <Badge variant={request.request_type === 'DONOR' ? 'default' : 'secondary'}>
                     {request.request_type === 'DONOR' ? 'Donor' : 'Recipient'}
@@ -156,10 +153,17 @@ export default function FinishedTransactionsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{request.owner_email}</span>
-                  </div>
+                  {request.owner_deleted ? (
+                    <p className="text-sm text-muted-foreground">
+                      She has since deleted her KalingApp account. The record is kept without her details, so the
+                      milk can still be traced.
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{request.owner_email}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span>{request.allocated_facility_name}</span>

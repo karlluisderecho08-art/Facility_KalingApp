@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { apiFetch, getMe } from '@/lib/api'
 import { DailyBookingsCard } from '@/components/daily-bookings-card'
-import { bookingStatusLabel } from '@/lib/booking'
+import { bookingStatusLabel, isOpenBooking, motherLabel } from '@/lib/booking'
 
 interface MilkBankRequest {
   id: number
@@ -21,6 +21,8 @@ interface MilkBankRequest {
   preferred_time: string
   owner_name: string
   owner_email: string
+  owner_deleted?: boolean
+  former_owner_ref?: string
 }
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
@@ -95,8 +97,10 @@ export default function FacilityDashboard() {
   }, [])
 
   const pendingRequests = requests.filter((r) => r.current_sub_status === 'pending')
+  // Accepted bookings, in progress or completed -- not pending, and not ones
+  // that ended without happening (declined, expired, cancelled).
   const confirmedRequests = requests.filter(
-    (r) => !['pending', 'declined', 'expired'].includes(r.current_sub_status)
+    (r) => r.current_sub_status === 'completed' || (r.current_sub_status !== 'pending' && isOpenBooking(r))
   )
   const confirmedThisWeek = confirmedRequests.filter((r) => isWithinLastDays(r.submitted_at, 7))
   const overduePending = pendingRequests.filter((r) => isOverdue(r.preferred_date))
@@ -214,7 +218,7 @@ export default function FacilityDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm text-foreground">
-                            {request.owner_name || request.owner_email}
+                            {motherLabel(request)}
                           </span>
                           <Badge className="text-xs bg-primary hover:bg-primary text-white">
                             {REQUEST_TYPE_LABELS[request.request_type]}
@@ -257,7 +261,7 @@ export default function FacilityDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm text-foreground">
-                            {request.owner_name || request.owner_email}
+                            {motherLabel(request)}
                           </span>
                           <Badge className="text-xs bg-green-500 hover:bg-green-500 text-white">
                             {REQUEST_TYPE_LABELS[request.request_type]}
