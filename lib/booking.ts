@@ -190,8 +190,8 @@ export const STATUS_LABELS: Record<BookingStatus, string> = {
  * A booking's status in words. A Drop off confirms with its courier's
  * delivery link instead of attendance (the backend's
  * collection.confirms_by_delivery_link), so while it waits on her it reads
- * "Awaiting Delivery Link". Once she sends it she goes straight to Breastmilk
- * Collection -- a Drop off has no Counseling and Testing.
+ * "Awaiting Delivery Link". Once she sends it she goes on to Counseling and
+ * Testing, like every donor.
  */
 export function bookingStatusLabel(request: {
   current_sub_status: string
