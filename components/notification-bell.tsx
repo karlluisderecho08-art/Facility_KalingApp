@@ -89,7 +89,7 @@ export function NotificationBell() {
     <div className="sm:relative" ref={containerRef}>
       <button
         onClick={toggleDropdown}
-        className="relative flex items-center justify-center h-11 w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
+        className="relative flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
         <Bell className="h-5 w-5" />

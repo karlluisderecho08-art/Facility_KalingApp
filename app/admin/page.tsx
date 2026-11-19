@@ -214,9 +214,11 @@ export default function FacilityDashboard() {
               <div className="space-y-4">
                 {pendingRequests.length > 0 ? (
                   pendingRequests.slice(0, 3).map((request) => (
-                    <div key={request.id} className="flex items-start justify-between p-3 border border-light-pink rounded-lg bg-light-pink/20">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div key={request.id} className="flex items-start justify-between gap-3 p-3 border border-light-pink rounded-lg bg-light-pink/20">
+                      {/* min-w-0 and a wrapping name line: on a phone the badge goes under the
+                          name instead of sliding beneath the Review button. */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                           <span className="font-medium text-sm text-foreground">
                             {motherLabel(request)}
                           </span>
@@ -230,7 +232,7 @@ export default function FacilityDashboard() {
                       </div>
                       <Button
                         size="sm"
-                        className="bg-primary hover:bg-primary/90 text-white"
+                        className="shrink-0 bg-primary hover:bg-primary/90 text-white"
                         render={<Link href="/admin/bookings?tab=pending" />}
                       >
                         Review
@@ -257,9 +259,9 @@ export default function FacilityDashboard() {
               <div className="space-y-4">
                 {confirmedRequests.length > 0 ? (
                   confirmedRequests.slice(0, 3).map((request) => (
-                    <div key={request.id} className="flex items-start justify-between p-3 border border-green-200 rounded-lg bg-green-50">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div key={request.id} className="flex items-start justify-between gap-3 p-3 border border-green-200 rounded-lg bg-green-50">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
                           <span className="font-medium text-sm text-foreground">
                             {motherLabel(request)}
                           </span>

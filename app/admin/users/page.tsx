@@ -153,7 +153,34 @@ export default function UsersPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* A phone: one small card per mother, everything in view. */}
+            <ul className="md:hidden divide-y divide-border">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <li key={user.id} className="py-3 first:pt-0">
+                    <p className="font-medium text-sm text-foreground break-words">{user.mom_name || '—'}</p>
+                    <p className="flex items-center gap-2 mt-0.5 text-sm text-muted-foreground min-w-0">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="break-all">{user.email}</span>
+                    </p>
+                    <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Donated</dt>
+                        <dd className="font-medium">{formatAmount(user.total_drawn_ml)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Received</dt>
+                        <dd className="font-medium">{formatAmount(user.total_received_ml)}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                ))
+              ) : (
+                <li className="text-center py-8 text-muted-foreground">No users found</li>
+              )}
+            </ul>
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -167,11 +194,12 @@ export default function UsersPage() {
                   {filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => (
                       <TableRow key={user.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{user.mom_name || '—'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{user.email}</span>
+                        <TableCell className="font-medium whitespace-normal">{user.mom_name || '—'}</TableCell>
+                        {/* Long addresses wrap, so the table fits a tablet without scrolling sideways. */}
+                        <TableCell className="whitespace-normal">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Mail className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="text-sm break-all">{user.email}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right text-sm">{formatAmount(user.total_drawn_ml)}</TableCell>
@@ -188,6 +216,7 @@ export default function UsersPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

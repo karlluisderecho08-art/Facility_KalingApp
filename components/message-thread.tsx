@@ -108,8 +108,8 @@ export function MessageThread({
     <>
       <div className="flex flex-col h-full min-h-0 glass bg-glass rounded-[18px] border border-glass-rim shadow-glass">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 sm:px-6 py-4 border-b border-border">
+          <div className="min-w-0 flex-1 basis-48">
             <h2 className="text-lg font-semibold text-foreground truncate">{title}</h2>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
               <Lock className="h-3 w-3" />
@@ -130,7 +130,7 @@ export function MessageThread({
         </div>
 
         {/* Messages */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[#FFF8FA]/60">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-3 bg-[#FFF8FA]/60">
           {loading && messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -147,7 +147,7 @@ export function MessageThread({
               return (
                 <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    className={`max-w-[85%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                       mine
                         ? 'bg-primary text-white rounded-tr-md'
                         : 'bg-white border border-border text-foreground rounded-tl-md'
@@ -167,12 +167,12 @@ export function MessageThread({
 
         {/* Composer */}
         {closedNote ? (
-          <div className="px-6 py-4 border-t border-border text-sm text-muted-foreground flex items-center gap-2">
+          <div className="px-4 sm:px-6 py-4 border-t border-border text-sm text-muted-foreground flex items-center gap-2">
             <Lock className="h-4 w-4 shrink-0" />
             {closedNote}
           </div>
         ) : (
-        <div className="px-6 py-4 border-t border-border">
+        <div className="px-4 sm:px-6 py-4 border-t border-border">
           {sendError && <p className="mb-2 text-sm text-destructive">{sendError}</p>}
           <div className="flex items-end gap-3">
             <textarea
@@ -188,13 +188,13 @@ export function MessageThread({
               maxLength={MAX_MESSAGE_LENGTH}
               rows={2}
               placeholder="Write a message…"
-              className="flex-1 resize-none px-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="flex-1 min-w-0 resize-none px-4 py-3 bg-white border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
               type="button"
               onClick={send}
               disabled={!canSend}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary hover:bg-[#E05F86] text-white transition-all duration-200 disabled:opacity-50"
+              className="shrink-0 flex items-center gap-2 px-4 sm:px-5 py-3 rounded-xl bg-primary hover:bg-[#E05F86] text-white transition-all duration-200 disabled:opacity-50"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Send

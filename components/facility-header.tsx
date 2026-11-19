@@ -28,19 +28,19 @@ export function FacilityHeader({ onOpenNav }: { onOpenNav: () => void }) {
   return (
     // h-20, matching the sidebar logo box's own fixed h-20 (see facility-sidebar.tsx).
     // Its side margins match the pages' p-4 md:p-8, so it lines up with the cards.
-    <header className="relative z-30 shrink-0 mx-4 md:mx-8 mt-4 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass px-4 md:px-8 h-20 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="relative z-30 shrink-0 mx-4 md:mx-8 mt-4 rounded-[24px] glass bg-glass border border-glass-rim shadow-glass px-3 sm:px-4 md:px-8 h-20 flex items-center justify-between gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Below lg the sidebar is a drawer (see app/admin/layout.tsx); this opens it. */}
         <button
           type="button"
           onClick={onOpenNav}
           aria-label="Open menu"
-          className="lg:hidden flex shrink-0 items-center justify-center h-11 w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
+          className="lg:hidden flex shrink-0 items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
         >
           <Menu className="h-5 w-5" />
         </button>
         <div className="min-w-0">
-          <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">Facility Management</h2>
+          <h2 className="text-sm sm:text-lg font-semibold text-foreground truncate">Facility Management</h2>
           {/* The facility this account runs, so staff can tell at a glance
               which facility they are signed in to. */}
           <p className="text-sm text-muted-foreground truncate">
@@ -49,13 +49,13 @@ export function FacilityHeader({ onOpenNav }: { onOpenNav: () => void }) {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <NotificationBell />
 
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 px-2 sm:px-4 py-2 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
+            className="flex items-center gap-3 p-1 sm:px-4 sm:py-2 rounded-xl bg-light-pink hover:bg-light-pink/80 text-primary transition-all duration-200"
           >
             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
               <User className="h-5 w-5 text-white" />

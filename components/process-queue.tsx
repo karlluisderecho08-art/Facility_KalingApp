@@ -341,10 +341,12 @@ export function ProcessQueue({
                   </div>
                 )}
 
+                {/* The long step labels ("Approve & move to Breastmilk Collection") wrap
+                    onto a second line on a phone instead of running out of the card. */}
                 <div className="flex flex-wrap gap-2">
                   {rowAction === 'advance' && (
                     <Button
-                      className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
+                      className="flex-1 min-w-[200px] h-auto min-h-9 py-2 whitespace-normal text-center leading-snug bg-primary hover:bg-primary/90 text-white"
                       onClick={() => handleAdvance(request)}
                       disabled={advancingId === request.id}
                     >
@@ -359,7 +361,7 @@ export function ProcessQueue({
 
                   {rowAction === 'complete' && (
                     <Button
-                      className="flex-1 min-w-[200px] bg-primary hover:bg-primary/90 text-white"
+                      className="flex-1 min-w-[200px] h-auto min-h-9 py-2 whitespace-normal text-center leading-snug bg-primary hover:bg-primary/90 text-white"
                       onClick={() => {
                         setCompleteRequest(request)
                         setCompleteAmountMl(request.requested_ml ? String(request.requested_ml) : '')

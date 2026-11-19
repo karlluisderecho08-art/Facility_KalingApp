@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, MessageCircle, Search } from 'lucide-react'
+import { ArrowLeft, Loader2, MessageCircle, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { MessageThread, type ThreadMessage } from '@/components/message-thread'
@@ -99,6 +99,7 @@ export default function BookingChatsPage() {
 
   const selected = bookings.find((b) => b.id === selectedId) ?? null
   const select = (id: number) => router.replace(`/admin/booking-chats?booking=${id}`)
+  const backToList = () => router.replace('/admin/booking-chats')
 
   return (
     <div className="space-y-6">
@@ -110,9 +111,13 @@ export default function BookingChatsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr] h-[calc(100vh-18rem)] min-h-[480px]">
+      {/* Side by side from lg. Below that (a phone, a tablet upright) one at a
+          time: the list, then the chosen chat with a way back to the list. */}
+      <div className="grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[320px_minmax(0,1fr)] h-[calc(100dvh-18rem)] min-h-[480px]">
         {/* Bookings */}
-        <div className="flex flex-col min-h-0 glass bg-glass rounded-[18px] border border-glass-rim shadow-glass">
+        <div
+          className={`${selectedId ? 'hidden lg:flex' : 'flex'} flex-col min-h-0 min-w-0 glass bg-glass rounded-[18px] border border-glass-rim shadow-glass`}
+        >
           <div className="p-4 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,9 +175,17 @@ export default function BookingChatsPage() {
         </div>
 
         {/* Chat */}
-        <div className="min-h-0 flex flex-col gap-4">
+        <div className={`${selectedId ? 'flex' : 'hidden lg:flex'} min-h-0 min-w-0 flex-col gap-4`}>
           {selectedId ? (
             <>
+              <button
+                type="button"
+                onClick={backToList}
+                className="lg:hidden self-start flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                All chats
+              </button>
               {selected && (
                 <div className="flex flex-wrap items-start gap-3">
                   <Badge variant={selected.request_type === 'DONOR' ? 'default' : 'secondary'}>
